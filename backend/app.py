@@ -1,0 +1,284 @@
+from subprocess import run
+from flask import Flask, request, send_file
+from flask_cors import CORS
+from shutil import make_archive
+import os
+import json
+import paramiko
+from stat import S_ISDIR
+import functools
+import random
+
+
+app = Flask(__name__)
+CORS(app)
+
+## CHANGE THIS ##
+host = "169.254.43.228"
+username = "pi"
+password = "net%1528"
+
+client = paramiko.client.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+sftp = None
+
+default_path_api = '/Users/andrewmulya/Downloads'
+default_path_ssh = '/home/pi/filebackend2'
+
+# HELPER FUNCTIONS
+
+
+def path_to_dict(path):
+    d = {'name': os.path.basename(path)}
+    d['path'] = os.path.abspath(path)
+    d['modified'] = os.path.getmtime(path)
+    if os.path.isdir(path):
+        d['type'] = "folder"
+        d['size'] = 0
+        d['children'] = []
+        for x in os.listdir(path):
+            if not x.startswith('.'):
+                try:
+                    d['children'].append(path_to_dict(os.path.join(path, x)))
+                except:
+                    continue
+    else:
+        d['type'] = "file"
+        d['size'] = os.path.getsize(path)
+    return d
+
+
+def path_to_dict_ssh(path):
+    global client, sftp
+    d = {'name': os.path.basename(path)}
+    d['path'] = os.path.abspath(path)
+    # file data
+    fileState = sftp.stat(path)
+    d['modified'] = fileState.st_mtime
+    if S_ISDIR(fileState.st_mode):
+        d['type'] = "folder"
+        d['size'] = 0
+        d['children'] = []
+        for x in sftp.listdir(path):
+            try:
+                d['children'].append(path_to_dict_ssh(
+                    os.path.join(path, x)))
+            except:
+                continue
+    else:
+        d['type'] = "file"
+        d['size'] = fileState.st_size
+    return d
+
+
+### ROUTING ###
+@app.route('/api', methods=['GET'])
+def api():
+    data = [path_to_dict(default_path_api)]
+    response = app.response_class(
+        response=json.dumps(data),
+        mimetype='application/json'
+    )
+    return response
+
+
+@app.route('/api/delete', methods=['POST'])
+def delete():
+    content = request.get_json()
+    try:
+        run(["sudo", "rm", "-rf", content['files']])
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+
+@app.route('/api/newfolder', methods=['POST'])
+def newfolder():
+    content = request.get_json()
+    folderName = content["path"] + "/" + content["folderName"]
+    try:
+        run(["sudo", "mkdir", folderName])
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+
+@app.route('/api/rename', methods=['POST'])
+def rename():
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    fileName = "/".join(sourceFile.split("/")[0:-1])+"/"+content["fileName"]
+    try:
+        run(["sudo", "mv", sourceFile, fileName])
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+# file view/write
+
+
+@app.route('/api/filedata', methods=['POST'])
+def filedata():
+    content = request.get_json()
+    if os.path.isdir(content['filePath']):
+        return "Directory", 204
+    f = open(content['filePath'], 'r')
+    filedata = f.read()
+    f.close()
+    return filedata, 200
+
+
+@app.route('/api/editfile', methods=['POST'])
+def editfile():
+    content = request.get_json()
+    try:
+        f = open(content['filePath'], 'w')
+        f.write(content['fileData'])
+        f.close()
+        return "OK", 200
+    except Exception as e:
+        return f"{e}", 404
+
+
+##### SSH ROUTES #####
+@app.route('/ssh', methods=['GET'])
+def ssh():
+    global client
+    data = [path_to_dict_ssh(default_path_ssh)]
+    response = app.response_class(
+        response=json.dumps(data),
+        mimetype='application/json'
+    )
+    return response
+
+
+@app.route('/ssh/delete', methods=['POST'])
+def ssh_delete():
+    global client, sftp
+    content = request.get_json()
+    try:
+        sftp.remove(content['files'])
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+
+@app.route('/ssh/newfolder', methods=['POST'])
+def ssh_newfolder():
+    global client, sftp
+    content = request.get_json()
+    folderName = content["path"] + "/" + content["folderName"]
+    try:
+        sftp.mkdir(folderName)
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+
+@app.route('/ssh/rename', methods=['POST'])
+def ssh_rename():
+    global client, sftp
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    fileName = "/".join(sourceFile.split("/")[0:-1])+"/"+content["fileName"]
+    try:
+        sftp.rename(sourceFile, fileName)
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
+# file view/write
+
+
+@app.route('/ssh/filedata', methods=['POST'])
+def ssh_filedata():
+    global client, sftp
+    content = request.get_json()
+    try:
+        f = sftp.open(content['filePath'], 'r')
+        filedata = f.read()
+        f.close()
+        return filedata, 200
+    except Exception as e:
+        return f"{e}", 404
+
+
+@app.route('/ssh/editfile', methods=['POST'])
+def ssh_editfile():
+    global client, sftp
+    content = request.get_json()
+    try:
+        f = sftp.open(content['filePath'], 'w')
+        f.write(content['fileData'])
+        f.close()
+        return "OK", 200
+    except Exception as e:
+        return f"{e}", 404
+
+
+# FILE TRANSFER
+getting_files = {}
+
+
+def byte_transferred(downloadID, filename, xfer, to_be_xfer):
+    global getting_files
+    getting_files[f"{downloadID}"] = {}
+    getting_files[f"{downloadID}"][filename] = f"{xfer/to_be_xfer*100}%"
+    # if (xfer == to_be_xfer):
+    #     getting_files.pop(f"{downloadID}")
+
+
+@app.route('/sftpget', methods=['GET', 'DELETE', 'POST'])
+def sftpget():
+    global getting_files
+    if request.method == "GET":
+        downloadID = request.args.get('downloadID')
+        try:
+            return getting_files[f"{downloadID}"]
+        except Exception as e:
+            return f"{e}", 204
+    if request.method == "DELETE":
+        downloadID = request.args.get('downloadID')
+        getting_files.pop(f"{downloadID}")
+        return "OK"
+    if request.method == "POST":
+        content = request.get_json()
+        # destination folder
+        destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
+            content['destFile']) else content['destFile']
+        try:
+            downloadHandler(content['sourceFile'],
+                            destination_folder, content['downloadID'])
+            return "OK", 200
+        except Exception as e:
+            print(e)
+            return f"{e}", 404
+
+
+def downloadHandler(src, dest, downloadID):
+    global client, sftp
+    filename = os.path.basename(src)
+    # if file is directory
+    if S_ISDIR(sftp.stat(src).st_mode):
+        # create dir in api server
+        newfolder = os.path.join(dest, filename)
+        if not os.path.exists(newfolder):
+            os.mkdir(newfolder)
+        for x in sftp.listdir(src):
+            print(os.path.join(src, x), newfolder)
+            try:
+                downloadHandler(os.path.join(src, x), newfolder, downloadID)
+            except:
+                pass
+    # if not a directory
+    else:
+        callback_downloadID = functools.partial(
+            byte_transferred, downloadID, filename)
+        sftp.get(src, os.path.join(
+            dest, filename), callback_downloadID)
+
+
+if __name__ == '__main__':
+    client.connect(host, username=username, password=password)
+    sftp = client.open_sftp()
+    app.run(debug=True, host='0.0.0.0')

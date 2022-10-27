@@ -1,0 +1,16 @@
+.mantine-Modal-title {
+    text-align: center;
+    flex: 1
+}
+
+.line-numbers span {
+    counter-increment: linenumber;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  
+  .line-numbers span::before {
+    content: counter(linenumber);
+    display: block;
+    color: #506882;
+  }
