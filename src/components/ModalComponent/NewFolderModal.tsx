@@ -8,11 +8,7 @@ const NewFolderModal = () => {
   const [modal, setModal] = useRecoilState(newFolderModalState);
   const { classes } = useStyles();
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const { createFolder } = useApi(
-    modal.server === "ssh"
-      ? process.env.REACT_APP_SERVER_URL + "/ssh"
-      : process.env.REACT_APP_SERVER_URL + "/api"
-  );
+  const { createFolder } = useApi();
 
   const formHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

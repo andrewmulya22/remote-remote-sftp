@@ -11,7 +11,7 @@ const LeftContainer = () => {
   const { fetchApi } = useApi();
 
   useEffect(() => {
-    fetchApi();
+    fetchApi("api");
     // eslint-disable-next-line
   }, []);
 

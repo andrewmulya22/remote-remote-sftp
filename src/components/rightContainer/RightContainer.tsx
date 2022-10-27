@@ -8,10 +8,10 @@ import FoldersFilesRightComponent from "./FoldersFilesRightComponent";
 const RightContainer = () => {
   const { classes } = useStyles();
   const SSHFiles = useRecoilValue(SSHFilesState);
-  const { fetchApi } = useApi(process.env.REACT_APP_SERVER_URL + "/ssh");
+  const { fetchApi } = useApi();
 
   useEffect(() => {
-    fetchApi();
+    fetchApi("ssh");
     // eslint-disable-next-line
   }, []);
 

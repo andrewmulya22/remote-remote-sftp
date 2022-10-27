@@ -1,7 +1,7 @@
 import { atom } from "recoil";
 
 interface IProgress {
-  id: string;
+  id: number;
   name: string;
   progress: number;
 }

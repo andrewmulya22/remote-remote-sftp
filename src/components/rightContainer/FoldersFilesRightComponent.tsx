@@ -34,7 +34,7 @@ const FoldersFilesRightComponent = ({
   count: number;
 }) => {
   const { classes } = useStyle();
-  const { renameFile } = useApi(process.env.REACT_APP_SERVER_URL + "/ssh");
+  const { renameFile } = useApi();
   const [folderLists, setFolderLists] = useRecoilState(SSHfolderListsState);
   const setSelectedFolder = useSetRecoilState(selectedSSHFolderState);
   const [selectedComponent, setSelectedComponent] = useRecoilState(

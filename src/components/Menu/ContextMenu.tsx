@@ -27,9 +27,7 @@ const ContextMenu = ({ points, type, size, server }: Props) => {
   const setEditModal = useSetRecoilState(editModalState);
   const setRenameLeft = useSetRecoilState(renameStateLeft);
   const setRenameRight = useSetRecoilState(renameStateRight);
-  const { deleteFiles } = useApi(
-    process.env.REACT_APP_SERVER_URL + "/" + server
-  );
+  const { deleteFiles } = useApi();
   const { downloadFile, uploadFile } = useUploadDownload();
 
   let newYPoint = points.y;

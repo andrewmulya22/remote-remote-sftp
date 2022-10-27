@@ -9,21 +9,18 @@ import {
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 
-export default function useApi(
-  url: string = process.env.REACT_APP_SERVER_URL + "/api"
-) {
+export default function useApi() {
   const setFile = useSetRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
   const selectedComponent = useRecoilValue(selectedComponentState);
   const selectedSSHComponent = useRecoilValue(selectedSSHComponentState);
 
   //FUNCTIONS
-  const fetchApi = () => {
+  const fetchApi = (server: "api" | "ssh" | "") => {
     axios
-      .get(url)
+      .get(process.env.REACT_APP_SERVER_URL + "/" + server)
       .then((response) => {
-        if (url === process.env.REACT_APP_SERVER_URL + "/api")
-          setFile(response.data);
+        if (server === "api") setFile(response.data);
         else setSSHFile(response.data);
       })
       .catch((err) =>
@@ -44,7 +41,7 @@ export default function useApi(
       })
       .then((response) => {
         if (response.status === 200) {
-          fetchApi();
+          fetchApi(server);
         }
       })
       .catch((err) =>
@@ -70,7 +67,7 @@ export default function useApi(
         path,
       })
       .then((response) => {
-        if (response.status === 200) fetchApi();
+        if (response.status === 200) fetchApi(server);
       })
       .catch((err) =>
         showNotification({
@@ -113,7 +110,7 @@ export default function useApi(
         sourceFile,
       })
       .then((response) => {
-        if (response.status === 200) fetchApi();
+        if (response.status === 200) fetchApi(server);
       })
       .catch((err) =>
         showNotification({
