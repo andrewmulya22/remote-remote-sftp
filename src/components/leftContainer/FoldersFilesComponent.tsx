@@ -77,6 +77,11 @@ const FoldersFilesComponent = ({
     renameFile("api", inputValue, files.path);
   };
 
+  const fillSelectedFolder = () => {
+    if (files.type === "folder") setSelectedFolder(files.path);
+    else setSelectedFolder(files.path.split("/").slice(0, -1).join("/"));
+  };
+
   return (
     <>
       {show ? (
@@ -94,14 +99,28 @@ const FoldersFilesComponent = ({
         variant={selectedComponent === files.path ? "light" : "subtle"}
         // variant="light"
         onClick={() => {
-          if (files.type === "folder") setSelectedFolder(files.path);
+          fillSelectedFolder();
           setSelectedComponent(files.path);
           setRename(false);
         }}
         onContextMenu={(event: React.MouseEvent) => {
           handleContextMenu(event);
+          fillSelectedFolder();
           setSelectedComponent(files.path);
           setRename(false);
+        }}
+        //COMPONENT DRAG HANDLER
+        draggable
+        onDragStart={(event: React.DragEvent) =>
+          event.dataTransfer.setData("filepath", files.path)
+        }
+        onDragOver={(event: React.DragEvent) => event.preventDefault()}
+        onDrop={(event: React.DragEvent) => {
+          event.preventDefault();
+          const sourcefile = event.dataTransfer.getData("filepath");
+          console.log(sourcefile);
+          //dest file
+          console.log(files.path);
         }}
       >
         <div

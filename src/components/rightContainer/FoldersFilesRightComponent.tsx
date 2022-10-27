@@ -71,6 +71,11 @@ const FoldersFilesRightComponent = ({
     renameFile("ssh", inputValue, files.path);
   };
 
+  const fillSelectedFolder = () => {
+    if (files.type === "folder") setSelectedFolder(files.path);
+    else setSelectedFolder(files.path.split("/").slice(0, -1).join("/"));
+  };
+
   return (
     <>
       {show ? (
@@ -87,10 +92,11 @@ const FoldersFilesRightComponent = ({
         className={[classes.container, "folderButton"].join(" ")}
         variant={selectedComponent === files.path ? "light" : "subtle"}
         onClick={() => {
-          if (files.type === "folder") setSelectedFolder(files.path);
+          fillSelectedFolder();
           setSelectedComponent(files.path);
         }}
         onContextMenu={(event: React.MouseEvent) => {
+          fillSelectedFolder();
           handleContextMenu(event);
           setSelectedComponent(files.path);
         }}
