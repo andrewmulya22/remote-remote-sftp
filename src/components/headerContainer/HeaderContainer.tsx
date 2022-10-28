@@ -4,17 +4,23 @@ import {
   createStyles,
   Group,
   Input,
+  Loader,
   PasswordInput,
   Text,
 } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { selectedFolderState } from "../../atoms/apiServerState";
-import { selectedSSHFolderState } from "../../atoms/sshServerState";
+import { fetchingState, selectedFolderState } from "../../atoms/apiServerState";
+import {
+  fetchingSSHState,
+  selectedSSHFolderState,
+} from "../../atoms/sshServerState";
 
 const HeaderContainer = () => {
   const { classes } = useStyles();
+  const fetching = useRecoilValue(fetchingState);
+  const fetchingSSH = useRecoilValue(fetchingSSHState);
   const selectedFolderLeft = useRecoilValue(selectedFolderState);
   const selectedFolderRight = useRecoilValue(selectedSSHFolderState);
   return (
@@ -68,6 +74,7 @@ const HeaderContainer = () => {
             value={selectedFolderLeft}
             readOnly
           />
+          {fetching ? <Loader size="sm" /> : <></>}
         </Group>
         <Group position="center">
           <Text>SSHサイト</Text>
@@ -77,6 +84,7 @@ const HeaderContainer = () => {
             value={selectedFolderRight}
             readOnly
           />
+          {fetchingSSH ? <Loader size="sm" /> : <></>}
         </Group>
       </Group>
     </>

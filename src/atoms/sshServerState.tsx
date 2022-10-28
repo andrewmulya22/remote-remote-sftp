@@ -10,6 +10,11 @@ interface IChildren {
 }
 
 //SSH FS data
+export const fetchingSSHState = atom<boolean>({
+  key: "fetchingSSHState",
+  default: false,
+});
+
 export const SSHFilesState = atom<IChildren[]>({
   key: "SSHFilesState",
   default: [],

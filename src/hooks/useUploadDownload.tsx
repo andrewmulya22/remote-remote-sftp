@@ -17,8 +17,11 @@ export default function useUploadDownload() {
   const { fetchApi } = useApi();
 
   // DOWNLOAD FILE
-  const downloadFile = () => {
-    if (selectedAPIFile === "") return;
+  const downloadFile = (
+    sourceFile: string | null = null,
+    destFile: string | null = null
+  ) => {
+    if (!sourceFile && selectedAPIFile === "") return;
     let downloadDone = false;
     const downloadID = Math.floor(Math.random() * 100000);
     setDownloadQ((prevState) => [
@@ -28,8 +31,8 @@ export default function useUploadDownload() {
     axios
       .post(process.env.REACT_APP_SERVER_URL + "/sftpget", {
         downloadID,
-        sourceFile: selectedSSHFile,
-        destFile: selectedAPIFile,
+        sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
+        destFile: destFile === null ? selectedAPIFile : destFile,
       })
       .then(() => {
         downloadDone = true;
@@ -65,7 +68,14 @@ export default function useUploadDownload() {
             })
           );
         })
-        .catch((err) => console.log(err));
+        .catch((err) =>
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          })
+        );
     };
     const progressInterval = setInterval(() => {
       getProgress();
@@ -88,8 +98,11 @@ export default function useUploadDownload() {
   };
 
   // UPLOAD FILE
-  const uploadFile = () => {
-    if (selectedSSHFile === "") return;
+  const uploadFile = (
+    sourceFile: string | null = null,
+    destFile: string | null = null
+  ) => {
+    if (!sourceFile && selectedSSHFile === "") return;
     let uploadDone = false;
     const uploadID = Math.floor(Math.random() * 100000);
     setUploadQ((prevState) => [
@@ -99,8 +112,8 @@ export default function useUploadDownload() {
     axios
       .post(process.env.REACT_APP_SERVER_URL + "/sftpput", {
         uploadID,
-        sourceFile: selectedAPIFile,
-        destFile: selectedSSHFile,
+        sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
+        destFile: destFile === null ? selectedSSHFile : destFile,
       })
       .then(() => {
         uploadDone = true;
@@ -136,7 +149,14 @@ export default function useUploadDownload() {
             })
           );
         })
-        .catch((err) => console.log(err));
+        .catch((err) =>
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          })
+        );
     };
     const progressInterval = setInterval(() => {
       getProgress();

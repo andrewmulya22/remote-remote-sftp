@@ -15,6 +15,7 @@ import {
 import { renameStateLeft } from "../../atoms/contextMenuState";
 import useApi from "../../hooks/useApi";
 import useContextMenu from "../../hooks/useContextMenu";
+import useUploadDownload from "../../hooks/useUploadDownload";
 import ContextMenu from "../Menu/ContextMenu";
 import "./LeftContainer.css";
 
@@ -36,6 +37,7 @@ const FoldersFilesComponent = ({
 }) => {
   const { classes } = useStyle();
   const { renameFile, moveFile } = useApi();
+  const { downloadFile } = useUploadDownload();
   const [folderLists, setFolderLists] = useRecoilState(folderListsState);
   const setSelectedFolder = useSetRecoilState(selectedFolderState);
   const [selectedComponent, setSelectedComponent] = useRecoilState(
@@ -86,9 +88,15 @@ const FoldersFilesComponent = ({
     event.preventDefault();
     const sourcefile = event.dataTransfer.getData("filepath");
     const source = event.dataTransfer.getData("server");
-    if (source === "api" && files.type === "folder")
+    if (
+      source === "api" &&
+      files.type === "folder" &&
+      files.path !== sourcefile
+    )
       moveFile("api", sourcefile, files.path);
-    else if (source === "ssh" && files.type === "folder") {
+    if (source === "ssh" && files.type === "folder") {
+      console.log(source, files.path);
+      downloadFile(sourcefile, files.path);
     }
   };
 

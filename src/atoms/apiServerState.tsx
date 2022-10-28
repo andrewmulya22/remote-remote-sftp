@@ -10,6 +10,11 @@ interface IChildren {
 }
 
 //API data
+export const fetchingState = atom<boolean>({
+  key: "fetchingState",
+  default: false,
+});
+
 export const filesState = atom<IChildren[]>({
   key: "filesState",
   default: [],

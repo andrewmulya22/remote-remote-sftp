@@ -1,8 +1,13 @@
 import axios from "axios";
 import React from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { filesState, selectedComponentState } from "../atoms/apiServerState";
 import {
+  fetchingState,
+  filesState,
+  selectedComponentState,
+} from "../atoms/apiServerState";
+import {
+  fetchingSSHState,
   selectedSSHComponentState,
   SSHFilesState,
 } from "../atoms/sshServerState";
@@ -10,6 +15,8 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 
 export default function useApi() {
+  const setFetching = useSetRecoilState(fetchingState);
+  const setFetchingSSH = useSetRecoilState(fetchingSSHState);
   const setFile = useSetRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
   const selectedComponent = useRecoilValue(selectedComponentState);
@@ -17,11 +24,19 @@ export default function useApi() {
 
   //FUNCTIONS
   const fetchApi = (server: "api" | "ssh" | "") => {
+    if (server === "api") setFetching(true);
+    if (server === "ssh") setFetchingSSH(true);
     axios
       .get(process.env.REACT_APP_SERVER_URL + "/" + server)
       .then((response) => {
-        if (server === "api") setFile(response.data);
-        else setSSHFile(response.data);
+        if (server === "api") {
+          setFile(response.data);
+          setFetching(false);
+        }
+        if (server === "ssh") {
+          setSSHFile(response.data);
+          setFetchingSSH(false);
+        }
       })
       .catch((err) =>
         showNotification({

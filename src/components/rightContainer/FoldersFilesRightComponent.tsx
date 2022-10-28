@@ -15,6 +15,7 @@ import {
 } from "../../atoms/sshServerState";
 import useApi from "../../hooks/useApi";
 import useContextMenu from "../../hooks/useContextMenu";
+import useUploadDownload from "../../hooks/useUploadDownload";
 import ContextMenu from "../Menu/ContextMenu";
 
 interface IChildren {
@@ -35,6 +36,7 @@ const FoldersFilesRightComponent = ({
 }) => {
   const { classes } = useStyle();
   const { renameFile, moveFile } = useApi();
+  const { uploadFile } = useUploadDownload();
   const [folderLists, setFolderLists] = useRecoilState(SSHfolderListsState);
   const setSelectedFolder = useSetRecoilState(selectedSSHFolderState);
   const [selectedComponent, setSelectedComponent] = useRecoilState(
@@ -80,8 +82,14 @@ const FoldersFilesRightComponent = ({
     event.preventDefault();
     const sourcefile = event.dataTransfer.getData("filepath");
     const source = event.dataTransfer.getData("server");
-    if (source === "api" && files.type === "folder") {
-    } else if (source === "ssh" && files.type === "folder")
+    if (source === "api" && files.type === "folder")
+      // upload file
+      uploadFile(sourcefile, files.path);
+    if (
+      source === "ssh" &&
+      files.type === "folder" &&
+      files.path !== sourcefile
+    )
       moveFile("ssh", sourcefile, files.path);
   };
 

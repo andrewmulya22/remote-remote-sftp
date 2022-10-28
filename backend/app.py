@@ -236,20 +236,23 @@ def ssh_move():
 
 @app.route('/ssh/filedata', methods=['POST'])
 def ssh_filedata():
-    global client, sftp
+    global client
     content = request.get_json()
     try:
-        f = sftp.open(content['filePath'], 'r')
-        filedata = f.read()
-        f.close()
-        return filedata, 200
+        # f = sftp.open(content['filePath'], 'r')
+        # filedata = f.read()
+        # f.close()
+        _, stdout, ___ = client.exec_command(
+            f"cat {content['filePath']}")
+        output = stdout.read().decode('utf-8')
+        return output, 200
     except Exception as e:
         return f"{e}", 404
 
 
 @app.route('/ssh/editfile', methods=['POST'])
 def ssh_editfile():
-    global client, sftp
+    global client
     content = request.get_json()
     try:
         f = sftp.open(content['filePath'], 'w')
