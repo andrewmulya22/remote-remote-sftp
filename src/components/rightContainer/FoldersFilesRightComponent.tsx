@@ -34,7 +34,7 @@ const FoldersFilesRightComponent = ({
   count: number;
 }) => {
   const { classes } = useStyle();
-  const { renameFile } = useApi();
+  const { renameFile, moveFile } = useApi();
   const [folderLists, setFolderLists] = useRecoilState(SSHfolderListsState);
   const setSelectedFolder = useSetRecoilState(selectedSSHFolderState);
   const [selectedComponent, setSelectedComponent] = useRecoilState(
@@ -76,6 +76,15 @@ const FoldersFilesRightComponent = ({
     else setSelectedFolder(files.path.split("/").slice(0, -1).join("/"));
   };
 
+  const onDropHandler = (event: React.DragEvent) => {
+    event.preventDefault();
+    const sourcefile = event.dataTransfer.getData("filepath");
+    const source = event.dataTransfer.getData("server");
+    if (source === "api" && files.type === "folder") {
+    } else if (source === "ssh" && files.type === "folder")
+      moveFile("ssh", sourcefile, files.path);
+  };
+
   return (
     <>
       {show ? (
@@ -100,6 +109,15 @@ const FoldersFilesRightComponent = ({
           handleContextMenu(event);
           setSelectedComponent(files.path);
         }}
+        //COMPONENT DRAG HANDLER
+        draggable
+        onDragStart={(event: React.DragEvent) => {
+          event.dataTransfer.setData("filetype", files.type);
+          event.dataTransfer.setData("filepath", files.path);
+          event.dataTransfer.setData("server", "ssh");
+        }}
+        onDragOver={(event: React.DragEvent) => event.preventDefault()}
+        onDrop={onDropHandler}
       >
         <div
           className={classes.dropdown}

@@ -6,7 +6,7 @@ from shutil import make_archive
 import os
 import json
 import paramiko
-from stat import S_ISDIR
+from stat import S_ISDIR, S_ISREG
 import functools
 import shutil
 
@@ -118,6 +118,20 @@ def rename():
     except Exception as e:
         return f"{e}", 404
 
+
+@app.route('/api/move', methods=['POST'])
+def move():
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    destPath = content["destPath"]
+    fileName = os.path.basename(sourceFile)
+    try:
+        os.rename(sourceFile, os.path.join(destPath, fileName))
+        return "OK"
+    except Exception as e:
+        print(e)
+        return f"{e}", 404
+
 # file view/write
 
 
@@ -158,13 +172,23 @@ def ssh():
 
 @app.route('/ssh/delete', methods=['POST'])
 def ssh_delete():
-    global client, sftp
     content = request.get_json()
     try:
-        sftp.remove(content['files'])
-        return "OK"
+        deleteHandler(content['files'])
+        return "OK", 200
     except Exception as e:
         return f"{e}", 404
+
+
+def deleteHandler(path):
+    global sftp
+    print(path)
+    if S_ISDIR(sftp.stat(path).st_mode):
+        for x in sftp.listdir(path):
+            deleteHandler(os.path.join(path, x))
+        sftp.rmdir(path)
+    else:
+        sftp.remove(path)
 
 
 @app.route('/ssh/newfolder', methods=['POST'])
@@ -191,6 +215,21 @@ def ssh_rename():
         return "OK"
     except Exception as e:
         return f"{e}", 404
+
+
+@app.route('/ssh/move', methods=['POST'])
+def ssh_move():
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    destPath = content["destPath"]
+    fileName = os.path.basename(sourceFile)
+    try:
+        sftp.rename(sourceFile, os.path.join(destPath, fileName))
+        return "OK"
+    except Exception as e:
+        print(e)
+        return f"{e}", 404
+
 
 # file view/write
 

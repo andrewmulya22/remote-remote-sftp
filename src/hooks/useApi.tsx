@@ -122,5 +122,35 @@ export default function useApi() {
       );
   };
 
-  return { fetchApi, deleteFiles, createFolder, editFile, renameFile };
+  const moveFile = (
+    server: "api" | "ssh" | "",
+    sourceFile: string,
+    destPath: string
+  ) => {
+    axios
+      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/move", {
+        sourceFile,
+        destPath,
+      })
+      .then((response) => {
+        if (response.status === 200) fetchApi(server);
+      })
+      .catch((err) =>
+        showNotification({
+          title: `Error ${err.response.status}`,
+          message: err.response.data,
+          color: "red",
+          icon: <IconX />,
+        })
+      );
+  };
+
+  return {
+    fetchApi,
+    deleteFiles,
+    createFolder,
+    editFile,
+    renameFile,
+    moveFile,
+  };
 }
