@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { NotificationsProvider } from "@mantine/notifications";
 import "./index.css";
 import App from "./App";
 import { RecoilRoot } from "recoil";
@@ -11,7 +12,9 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <RecoilRoot>
-      <App />
+      <NotificationsProvider>
+        <App />
+      </NotificationsProvider>
     </RecoilRoot>
   </React.StrictMode>
 );

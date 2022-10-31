@@ -1,8 +1,8 @@
+from crypt import methods
 from distutils.command.upload import upload
 from subprocess import run
 from flask import Flask, request, send_file
 from flask_cors import CORS
-from shutil import make_archive
 import os
 import json
 import paramiko
@@ -15,9 +15,9 @@ app = Flask(__name__)
 CORS(app)
 
 ## CHANGE THIS ##
-host = "169.254.43.228"
-username = "pi"
-password = "net%1528"
+host = None
+username = None
+password = None
 
 client = paramiko.client.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -25,6 +25,22 @@ sftp = None
 
 default_path_api = '/Users/andrewmulya/Downloads'
 default_path_ssh = '/home/pi/Downloads'
+
+
+@app.route('/ssh_login', methods=['POST'])
+def ssh_login():
+    global client, sftp, host, username, password
+    content = request.get_json()
+    host = content['host']
+    username = content['username']
+    password = content['password']
+    try:
+        client.connect(host, username=username, password=password)
+        sftp = client.open_sftp()
+        return "OK"
+    except Exception as e:
+        return f"{e}", 404
+
 
 # HELPER FUNCTIONS
 
@@ -140,10 +156,13 @@ def filedata():
     content = request.get_json()
     if os.path.isdir(content['filePath']):
         return "Directory", 204
-    f = open(content['filePath'], 'r')
-    filedata = f.read()
-    f.close()
-    return filedata, 200
+    try:
+        f = open(content['filePath'], 'r')
+        filedata = f.read()
+        f.close()
+        return filedata, 200
+    except Exception as e:
+        return f"{e}", 404
 
 
 @app.route('/api/editfile', methods=['POST'])
@@ -383,6 +402,4 @@ def uploadHandler(src, dest, uploadID):
 
 
 if __name__ == '__main__':
-    client.connect(host, username=username, password=password)
-    sftp = client.open_sftp()
     app.run(debug=True, host='0.0.0.0')

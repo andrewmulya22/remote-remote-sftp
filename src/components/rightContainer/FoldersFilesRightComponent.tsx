@@ -5,7 +5,7 @@ import {
   IconFile,
   IconFolder,
 } from "@tabler/icons";
-import React, { useState } from "react";
+import React, { DragEventHandler, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { renameStateRight } from "../../atoms/contextMenuState";
 import {
@@ -157,6 +157,9 @@ const FoldersFilesRightComponent = ({
               }}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              //prevent draggable
+              onDragStart={(e) => e.preventDefault()}
+              draggable
               style={{ width: "30vw" }}
             />
           ) : (

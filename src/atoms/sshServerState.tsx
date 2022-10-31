@@ -9,6 +9,12 @@ interface IChildren {
   children?: IChildren[];
 }
 
+//Auth status
+export const SSHAuthState = atom<boolean>({
+  key: "SSHAuthState",
+  default: false,
+});
+
 //SSH FS data
 export const fetchingSSHState = atom<boolean>({
   key: "fetchingSSHState",

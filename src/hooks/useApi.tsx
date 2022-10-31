@@ -160,6 +160,10 @@ export default function useApi() {
       );
   };
 
+  const reloadFiles = (server: "ssh" | "api" | "") => {
+    fetchApi(server);
+  };
+
   return {
     fetchApi,
     deleteFiles,
@@ -167,5 +171,6 @@ export default function useApi() {
     editFile,
     renameFile,
     moveFile,
+    reloadFiles,
   };
 }

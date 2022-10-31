@@ -1,22 +1,21 @@
-import { Button, createStyles, Modal, Paper } from "@mantine/core";
+import { Alert, Button, createStyles, Modal, Paper } from "@mantine/core";
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../../atoms/apiServerState";
 import { editModalState } from "../../atoms/modalState";
 import { selectedSSHComponentState } from "../../atoms/sshServerState";
-import { showNotification } from "@mantine/notifications";
 import useApi from "../../hooks/useApi";
 import "./ModalStyle.css";
-import { IconX } from "@tabler/icons";
 
 const EditModal = () => {
   //modal management
   const [modalOpened, setModalOpened] = useRecoilState(editModalState);
   const { classes } = useStyles();
 
-  //file data
+  //file data and error
   const [value, setValue] = useState("");
+  const [error, setError] = useState("");
 
   //useref
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -43,6 +42,7 @@ const EditModal = () => {
 
   useEffect(() => {
     if (
+      modalOpened.opened &&
       modalOpened.server.length &&
       (selectedComponent || selectedSSHComponent)
     ) {
@@ -62,18 +62,15 @@ const EditModal = () => {
         .then((resp) => {
           if (resp.status === 200) {
             setValue(resp.data);
+            setError("");
             return true;
           }
           return false;
         })
-        .catch((err) =>
-          showNotification({
-            title: `Error ${err.response.status}`,
-            message: err.response.data,
-            color: "red",
-            icon: <IconX />,
-          })
-        );
+        .catch((err) => {
+          setValue("");
+          setError(err.response.data);
+        });
     }
   }, [setValue, selectedComponent, selectedSSHComponent, modalOpened]);
 
@@ -95,6 +92,13 @@ const EditModal = () => {
       className={classes.modalStyle}
     >
       <form onSubmit={(e) => formHandler(e)}>
+        {error.length ? (
+          <Alert className={classes.alertStyle} color="red">
+            {error}
+          </Alert>
+        ) : (
+          <></>
+        )}
         <Paper
           component="textarea"
           value={value}
@@ -128,6 +132,10 @@ const useStyles = createStyles(() => ({
   buttonStyle: {
     marginTop: "2vh",
     float: "right",
+  },
+  alertStyle: {
+    margin: "0.5vh 0",
+    textAlign: "center",
   },
 }));
 

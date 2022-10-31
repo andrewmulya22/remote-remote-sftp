@@ -9,20 +9,48 @@ import {
   Text,
 } from "@mantine/core";
 import { IconRefresh } from "@tabler/icons";
-import React from "react";
+import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { fetchingState, selectedFolderState } from "../../atoms/apiServerState";
 import {
   fetchingSSHState,
   selectedSSHFolderState,
+  SSHAuthState,
 } from "../../atoms/sshServerState";
+import useApi from "../../hooks/useApi";
+import useLogin from "../../hooks/useLogin";
 
 const HeaderContainer = () => {
   const { classes } = useStyles();
+  const { reloadFiles } = useApi();
+  const { ssh_login_handler } = useLogin();
   const fetching = useRecoilValue(fetchingState);
   const fetchingSSH = useRecoilValue(fetchingSSHState);
   const selectedFolderLeft = useRecoilValue(selectedFolderState);
   const selectedFolderRight = useRecoilValue(selectedSSHFolderState);
+
+  //ssh ref
+  const SSHHOST = useRef<HTMLInputElement>(null);
+  const SSHUSERNAME = useRef<HTMLInputElement>(null);
+  const SSHPASSWORD = useRef<HTMLInputElement>(null);
+  const SSHAuth = useRecoilValue(SSHAuthState);
+
+  const api_login = () => {};
+
+  const ssh_login = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      SSHHOST.current!.value &&
+      SSHUSERNAME.current!.value &&
+      SSHPASSWORD.current!.value
+    )
+      ssh_login_handler(
+        SSHHOST.current!.value,
+        SSHUSERNAME.current!.value,
+        SSHPASSWORD.current!.value
+      );
+  };
+
   return (
     <>
       <Group grow className={classes.container}>
@@ -38,27 +66,36 @@ const HeaderContainer = () => {
             <Button type="submit" value="Submit">
               接続
             </Button>
-            <Button>
+            <Button onClick={() => reloadFiles("api")}>
               <IconRefresh />
             </Button>
           </Group>
         </form>
-        <Group position="center">
-          <Badge size="lg">SFTPサーバ</Badge>
-          <Input placeholder="Host" disabled />
-          <Input placeholder="Username" disabled />
-          <PasswordInput
-            placeholder="Password"
-            className={classes.passwordInputStyle}
-            disabled
-          />
-          <Button type="submit" value="Submit" disabled>
-            接続
-          </Button>
-          <Button disabled>
-            <IconRefresh />
-          </Button>
-        </Group>
+        <form
+          onSubmit={(e) => {
+            ssh_login(e);
+          }}
+        >
+          <Group position="center">
+            <Badge size="lg">SFTPサーバ</Badge>
+            <Input placeholder="Host" ref={SSHHOST} />
+            <Input placeholder="Username" ref={SSHUSERNAME} />
+            <PasswordInput
+              placeholder="Password"
+              className={classes.passwordInputStyle}
+              ref={SSHPASSWORD}
+            />
+            <Button type="submit" value="Submit">
+              接続
+            </Button>
+            <Button
+              onClick={() => reloadFiles("ssh")}
+              disabled={SSHAuth ? false : true}
+            >
+              <IconRefresh />
+            </Button>
+          </Group>
+        </form>
       </Group>
       <Group
         position="center"
@@ -95,10 +132,10 @@ export default React.memo(HeaderContainer);
 
 const useStyles = createStyles(() => ({
   container: {
-    height: "80px",
+    minHeight: "80px",
     gridColumn: "1/4",
     borderBottom: "1px solid rgba(128,128,128,0.5)",
-    padding: "0vh 3vh",
+    padding: "2vh 3vh",
   },
   siteContainer: {
     height: "40px",
