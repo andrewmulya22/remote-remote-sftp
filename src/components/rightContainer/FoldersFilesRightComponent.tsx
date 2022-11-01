@@ -35,7 +35,7 @@ const FoldersFilesRightComponent = ({
   count: number;
 }) => {
   const { classes } = useStyle();
-  const { renameFile, moveFile } = useApi();
+  const { getChildren, renameFile, moveFile } = useApi();
   const { uploadFile } = useUploadDownload();
   const [folderLists, setFolderLists] = useRecoilState(SSHfolderListsState);
   const setSelectedFolder = useSetRecoilState(selectedSSHFolderState);
@@ -61,7 +61,11 @@ const FoldersFilesRightComponent = ({
       setFolderLists((prevLists) =>
         prevLists.filter((list) => list !== files.path)
       );
-    else setFolderLists((prevLists) => [...prevLists, files.path]);
+    else {
+      setFolderLists((prevLists) => [...prevLists, files.path]);
+      //get children folder
+      getChildren("ssh", files.path);
+    }
   };
 
   //initial value for text input

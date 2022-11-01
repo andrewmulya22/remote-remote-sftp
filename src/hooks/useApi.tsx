@@ -63,27 +63,59 @@ export default function useApi() {
         path: dirPath,
       })
       .then((response) => {
-        setFile((prevState) => {
-          const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
-          if (dirPath.startsWith(rootPath)) {
-            const pathToSearch = dirPath
-              .substring(rootPath.length)
-              .split("/")
-              .filter((item) => item.length > 0);
-            const newState = {
-              ...prevState[0],
-              children: childFinder(
-                prevState[0].children!,
-                rootPath,
-                pathToSearch,
-                response.data
-              ),
-            };
-            return [newState];
-          }
-          return prevState;
-        });
-      });
+        // for api server
+        if (server === "api")
+          setFile((prevState) => {
+            const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
+            if (dirPath.startsWith(rootPath)) {
+              const pathToSearch = dirPath
+                .substring(rootPath.length)
+                .split("/")
+                .filter((item) => item.length > 0);
+              const newState = {
+                ...prevState[0],
+                children: childFinder(
+                  prevState[0].children!,
+                  rootPath,
+                  pathToSearch,
+                  response.data
+                ),
+              };
+              return [newState];
+            }
+            return prevState;
+          });
+        // for ssh server
+        if (server === "ssh")
+          setSSHFile((prevState) => {
+            const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
+            if (dirPath.startsWith(rootPath)) {
+              const pathToSearch = dirPath
+                .substring(rootPath.length)
+                .split("/")
+                .filter((item) => item.length > 0);
+              const newState = {
+                ...prevState[0],
+                children: childFinder(
+                  prevState[0].children!,
+                  rootPath,
+                  pathToSearch,
+                  response.data
+                ),
+              };
+              return [newState];
+            }
+            return prevState;
+          });
+      })
+      .catch((err) =>
+        showNotification({
+          title: `Error ${err.response.status}`,
+          message: err.response.data,
+          color: "red",
+          icon: <IconX />,
+        })
+      );
   };
 
   const childFinder = (

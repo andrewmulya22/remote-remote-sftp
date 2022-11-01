@@ -25,7 +25,7 @@ sftp = None
 
 default_path_api = '/'
 # default_path_api = '/Users/andrewmulya/Downloads'
-default_path_ssh = '/home/pi/Downloads'
+default_path_ssh = '/'
 
 
 @app.route('/ssh_login', methods=['POST'])
@@ -47,8 +47,8 @@ def ssh_login():
 
 
 def path_to_dict(path):
-    if(path == "/"):
-        d = {'name': "/"}
+    if(path == "/" or path == ""):
+        d = {'name': "root"}
     else:
         d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
@@ -72,7 +72,7 @@ def path_to_dict(path):
 def path_to_dict_ssh(path):
     global client, sftp
     if(path == "/"):
-        d = {'name': "/"}
+        d = {'name': "root"}
     else:
         d = {'name': os.path.basename(path)}
     d = {'name': os.path.basename(path)}
@@ -84,35 +84,62 @@ def path_to_dict_ssh(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
-        for x in sftp.listdir(path):
-            try:
-                d['children'].append(path_to_dict_ssh(
-                    os.path.join(path, x)))
-            except:
-                continue
+        # for x in sftp.listdir(path):
+        #     try:
+        #         d['children'].append(path_to_dict_ssh(
+        #             os.path.join(path, x)))
+        #     except:
+        #         continue
     else:
         d['type'] = "file"
         d['size'] = fileState.st_size
     return d
+
+### FETCH CHILDREN DATA ###
 
 
 @app.route('/api/children', methods=['POST'])
 def api_children():
     content = request.get_json()
     children = []
-    for x in os.listdir(content['path']):
-        try:
-            children.append(path_to_dict(os.path.join(content['path'], x)))
-        except:
-            continue
-    response = app.response_class(
-        response=json.dumps(children),
-        mimetype='application/json'
-    )
-    return response
+    try:
+        for x in os.listdir(content['path']):
+            try:
+                children.append(path_to_dict(os.path.join(content['path'], x)))
+            except:
+                continue
+        response = app.response_class(
+            response=json.dumps(children),
+            mimetype='application/json'
+        )
+        return response
+    except Exception as e:
+        return f"{e}", 404
 
+
+@app.route('/ssh/children', methods=['POST'])
+def ssh_children():
+    global sftp
+    content = request.get_json()
+    children = []
+    try:
+        for x in sftp.listdir(content['path']):
+            try:
+                children.append(path_to_dict_ssh(
+                    os.path.join(content['path'], x)))
+            except:
+                continue
+        response = app.response_class(
+            response=json.dumps(children),
+            mimetype='application/json'
+        )
+        return response
+    except Exception as e:
+        return f"{e}", 404
 
 ### ROUTING ###
+
+
 @app.route('/api', methods=['GET'])
 def api():
     data = [path_to_dict(default_path_api)]
