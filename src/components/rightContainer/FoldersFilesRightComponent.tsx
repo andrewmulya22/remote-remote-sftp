@@ -56,6 +56,7 @@ const FoldersFilesRightComponent = ({
   const arrowClickHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
     setValue((prevValue) => !prevValue);
+    //set opened folder
     if (value)
       setFolderLists((prevLists) =>
         prevLists.filter((list) => list !== files.path)

@@ -5,6 +5,7 @@ import {
   IconFile,
   IconFolder,
 } from "@tabler/icons";
+import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import {
@@ -36,7 +37,7 @@ const FoldersFilesComponent = ({
   count: number;
 }) => {
   const { classes } = useStyle();
-  const { renameFile, moveFile } = useApi();
+  const { getChildren, renameFile, moveFile } = useApi();
   const { downloadFile } = useUploadDownload();
   const [folderLists, setFolderLists] = useRecoilState(folderListsState);
   const setSelectedFolder = useSetRecoilState(selectedFolderState);
@@ -62,11 +63,16 @@ const FoldersFilesComponent = ({
   const arrowClickHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
     setValue((prevValue) => !prevValue);
+    //set opened folder
     if (value)
       setFolderLists((prevLists) =>
         prevLists.filter((list) => list !== files.path)
       );
-    else setFolderLists((prevLists) => [...prevLists, files.path]);
+    else {
+      setFolderLists((prevLists) => [...prevLists, files.path]);
+      //get children folder
+      getChildren("api", files.path);
+    }
   };
 
   //initial value for text input
@@ -95,7 +101,6 @@ const FoldersFilesComponent = ({
     )
       moveFile("api", sourcefile, files.path);
     if (source === "ssh" && files.type === "folder") {
-      console.log(source, files.path);
       downloadFile(sourcefile, files.path);
     }
   };

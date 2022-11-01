@@ -23,7 +23,8 @@ client = paramiko.client.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 sftp = None
 
-default_path_api = '/Users/andrewmulya/Downloads'
+default_path_api = '/'
+# default_path_api = '/Users/andrewmulya/Downloads'
 default_path_ssh = '/home/pi/Downloads'
 
 
@@ -46,19 +47,22 @@ def ssh_login():
 
 
 def path_to_dict(path):
-    d = {'name': os.path.basename(path)}
+    if(path == "/"):
+        d = {'name': "/"}
+    else:
+        d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
     d['modified'] = os.path.getmtime(path)
     if os.path.isdir(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
-        for x in os.listdir(path):
-            if not x.startswith('.'):
-                try:
-                    d['children'].append(path_to_dict(os.path.join(path, x)))
-                except:
-                    continue
+        # for x in os.listdir(path):
+        #     if not x.startswith('.'):
+        #         try:
+        #             d['children'].append(path_to_dict(os.path.join(path, x)))
+        #         except:
+        #             continue
     else:
         d['type'] = "file"
         d['size'] = os.path.getsize(path)
@@ -67,6 +71,10 @@ def path_to_dict(path):
 
 def path_to_dict_ssh(path):
     global client, sftp
+    if(path == "/"):
+        d = {'name': "/"}
+    else:
+        d = {'name': os.path.basename(path)}
     d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
     # file data
@@ -86,6 +94,22 @@ def path_to_dict_ssh(path):
         d['type'] = "file"
         d['size'] = fileState.st_size
     return d
+
+
+@app.route('/api/children', methods=['POST'])
+def api_children():
+    content = request.get_json()
+    children = []
+    for x in os.listdir(content['path']):
+        try:
+            children.append(path_to_dict(os.path.join(content['path'], x)))
+        except:
+            continue
+    response = app.response_class(
+        response=json.dumps(children),
+        mimetype='application/json'
+    )
+    return response
 
 
 ### ROUTING ###

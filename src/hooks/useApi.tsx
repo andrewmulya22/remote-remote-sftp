@@ -14,6 +14,15 @@ import {
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 
+interface IChildren {
+  type: string;
+  name: string;
+  path: string;
+  modified: number;
+  size: number;
+  children?: IChildren[];
+}
+
 export default function useApi() {
   const setFetching = useSetRecoilState(fetchingState);
   const setFetchingSSH = useSetRecoilState(fetchingSSHState);
@@ -46,6 +55,64 @@ export default function useApi() {
           icon: <IconX />,
         })
       );
+  };
+
+  const getChildren = (server: "api" | "ssh" | "", dirPath: string) => {
+    axios
+      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/children", {
+        path: dirPath,
+      })
+      .then((response) => {
+        setFile((prevState) => {
+          const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
+          if (dirPath.startsWith(rootPath)) {
+            const pathToSearch = dirPath
+              .substring(rootPath.length)
+              .split("/")
+              .filter((item) => item.length > 0);
+            const newState = {
+              ...prevState[0],
+              children: childFinder(
+                prevState[0].children!,
+                rootPath,
+                pathToSearch,
+                response.data
+              ),
+            };
+            return [newState];
+          }
+          return prevState;
+        });
+      });
+  };
+
+  const childFinder = (
+    children: IChildren[],
+    currentPath: string,
+    pathToSearch: string[],
+    data: IChildren[]
+  ): IChildren[] => {
+    if (pathToSearch.length > 0) {
+      console.log(currentPath, pathToSearch);
+      currentPath = currentPath + "/" + pathToSearch[0];
+      console.log(currentPath);
+
+      return children.slice().map((child) => {
+        if (child.path === currentPath && child.children)
+          return {
+            ...child,
+            children: childFinder(
+              child.children,
+              currentPath,
+              pathToSearch.slice(1),
+              data
+            ),
+          };
+        return child;
+      });
+    }
+    //if it has reached the intended path
+    return data;
   };
 
   const deleteFiles = (server: "api" | "ssh" | "") => {
@@ -166,6 +233,7 @@ export default function useApi() {
 
   return {
     fetchApi,
+    getChildren,
     deleteFiles,
     createFolder,
     editFile,
