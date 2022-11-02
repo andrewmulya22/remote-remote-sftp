@@ -9,6 +9,7 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import {
+  filesState,
   folderListsState,
   selectedComponentState,
   selectedFolderState,
@@ -49,6 +50,7 @@ const FoldersFilesComponent = ({
     "api",
     files.path
   );
+  const [files_state, setFiles] = useRecoilState(filesState);
 
   //Check if folder was opened
   const [value, setValue] = useState(

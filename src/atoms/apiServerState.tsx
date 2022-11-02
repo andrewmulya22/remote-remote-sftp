@@ -35,3 +35,8 @@ export const selectedComponentState = atom<string>({
   key: "selectedComponentState",
   default: "",
 });
+
+export const scrollLocState = atom<number>({
+  key: "scrollLocState",
+  default: 0,
+});

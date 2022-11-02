@@ -48,7 +48,7 @@ def ssh_login():
 
 def path_to_dict(path):
     if(path == "/" or path == ""):
-        d = {'name': "root"}
+        d = {'name': "/"}
     else:
         d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
@@ -71,11 +71,10 @@ def path_to_dict(path):
 
 def path_to_dict_ssh(path):
     global client, sftp
-    if(path == "/"):
-        d = {'name': "root"}
+    if(path == "/" or path == ""):
+        d = {'name': "/"}
     else:
         d = {'name': os.path.basename(path)}
-    d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
     # file data
     fileState = sftp.stat(path)
@@ -123,11 +122,14 @@ def ssh_children():
     content = request.get_json()
     children = []
     try:
+        print(sftp.listdir(content['path']))
         for x in sftp.listdir(content['path']):
             try:
+                # code stops here (?)
+                print(x)
                 children.append(path_to_dict_ssh(
                     os.path.join(content['path'], x)))
-            except:
+            except Exception as e:
                 continue
         response = app.response_class(
             response=json.dumps(children),
@@ -453,4 +455,4 @@ def uploadHandler(src, dest, uploadID):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', threaded=True)

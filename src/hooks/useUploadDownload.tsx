@@ -14,7 +14,7 @@ export default function useUploadDownload() {
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
   const setUploadQ = useSetRecoilState(uploadQState);
   const setDownloadQ = useSetRecoilState(downloadQState);
-  const { fetchApi } = useApi();
+  const { reloadFiles } = useApi();
 
   // DOWNLOAD FILE
   const downloadFile = (
@@ -92,7 +92,7 @@ export default function useUploadDownload() {
         setDownloadQ((prevState) =>
           prevState.filter((state) => state.id !== downloadID)
         );
-        fetchApi("api");
+        reloadFiles("api");
       }
     }, 500);
   };
@@ -173,7 +173,7 @@ export default function useUploadDownload() {
         setUploadQ((prevState) =>
           prevState.filter((state) => state.id !== uploadID)
         );
-        fetchApi("ssh");
+        reloadFiles("ssh");
       }
     }, 500);
   };
