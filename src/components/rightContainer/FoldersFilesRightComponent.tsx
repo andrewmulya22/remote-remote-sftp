@@ -5,7 +5,7 @@ import {
   IconFile,
   IconFolder,
 } from "@tabler/icons";
-import React, { DragEventHandler, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { renameStateRight } from "../../atoms/contextMenuState";
 import {
@@ -53,18 +53,28 @@ const FoldersFilesRightComponent = ({
     folderLists.filter((folder) => folder === files.path).length ? true : false
   );
 
+  useEffect(() => {
+    setValue(
+      folderLists.filter((folder) => folder === files.path).length
+        ? true
+        : false
+    );
+  }, [folderLists]);
+
   const arrowClickHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setValue((prevValue) => !prevValue);
     //set opened folder
-    if (value)
+    if (value) {
       setFolderLists((prevLists) =>
         prevLists.filter((list) => list !== files.path)
       );
-    else {
-      setFolderLists((prevLists) => [...prevLists, files.path]);
+      setValue((prevValue) => !prevValue);
+    } else {
       //get children folder
-      getChildren("ssh", files.path);
+      getChildren("ssh", files.path).then(() => {
+        setFolderLists((prevLists) => [...prevLists, files.path]);
+        setValue((prevValue) => !prevValue);
+      });
     }
   };
 

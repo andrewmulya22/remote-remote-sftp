@@ -1,14 +1,12 @@
 import { createStyles } from "@mantine/core";
-import React, { useEffect } from "react";
+import React from "react";
 import { useRecoilValue } from "recoil";
-import { fetchingSSHState, SSHFilesState } from "../../atoms/sshServerState";
-import useApi from "../../hooks/useApi";
+import { SSHFilesState } from "../../atoms/sshServerState";
 import FoldersFilesRightComponent from "./FoldersFilesRightComponent";
 
 const RightContainer = () => {
   const { classes } = useStyles();
   const SSHFiles = useRecoilValue(SSHFilesState);
-  const fetching = useRecoilValue(fetchingSSHState);
   // const { fetchApi } = useApi();
 
   // useEffect(() => {
@@ -16,9 +14,7 @@ const RightContainer = () => {
   //   // eslint-disable-next-line
   // }, []);
 
-  return fetching ? (
-    <></>
-  ) : (
+  return (
     <div className={classes.container} id="right-container">
       {SSHFiles.sort((a, b) => b.type.localeCompare(a.type)).map((file) => (
         <FoldersFilesRightComponent key={file.path} files={file} count={1} />

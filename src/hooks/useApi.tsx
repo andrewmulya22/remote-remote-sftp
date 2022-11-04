@@ -1,11 +1,10 @@
 import axios from "axios";
 import React from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   fetchingState,
   filesState,
   folderListsState,
-  scrollLocState,
   selectedComponentState,
 } from "../atoms/apiServerState";
 import {
@@ -16,7 +15,6 @@ import {
 } from "../atoms/sshServerState";
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
-import { resolve } from "node:path/win32";
 
 interface IChildren {
   type: string;
@@ -32,15 +30,15 @@ export default function useApi() {
   const setFetching = useSetRecoilState(fetchingState);
   const setFetchingSSH = useSetRecoilState(fetchingSSHState);
   //file states
-  const fileState = useRecoilValue(filesState);
   const setFile = useSetRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
   //selected components
   const selectedComponent = useRecoilValue(selectedComponentState);
   const selectedSSHComponent = useRecoilValue(selectedSSHComponentState);
   //opened folders
-  const folderLists = useRecoilValue(folderListsState);
-  const SSHfolderLists = useRecoilValue(SSHfolderListsState);
+  const [folderLists, setFolderLists] = useRecoilState(folderListsState);
+  const [SSHfolderLists, setSSHFolderLists] =
+    useRecoilState(SSHfolderListsState);
 
   //FUNCTIONS
   const fetchApi = (server: "api" | "ssh" | "") => {
@@ -69,65 +67,70 @@ export default function useApi() {
   };
 
   const getChildren = async (server: "api" | "ssh" | "", dirPath: string) => {
-    axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/children", {
-        path: dirPath,
-      })
-      .then((response) => {
-        console.log(response.data);
-        // for api server
-        if (server === "api")
-          setFile((prevState) => {
-            const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
-            if (dirPath.startsWith(rootPath)) {
-              const pathToSearch = dirPath
-                .substring(rootPath.length)
-                .split("/")
-                .filter((item) => item.length > 0);
-              const newState = {
-                ...prevState[0],
-                children: childFinder(
-                  prevState[0].children!,
-                  rootPath,
-                  pathToSearch,
-                  response.data
-                ),
-              };
-              return [newState];
-            }
-            return prevState;
-          });
-        // for ssh server
-        if (server === "ssh")
-          setSSHFile((prevState) => {
-            const rootPath = prevState[0].path === "/" ? "" : prevState[0].path;
-            if (dirPath.startsWith(rootPath)) {
-              const pathToSearch = dirPath
-                .substring(rootPath.length)
-                .split("/")
-                .filter((item) => item.length > 0);
-              const newState = {
-                ...prevState[0],
-                children: childFinder(
-                  prevState[0].children!,
-                  rootPath,
-                  pathToSearch,
-                  response.data
-                ),
-              };
-              return [newState];
-            }
-            return prevState;
-          });
-      })
-      .catch((err) =>
-        showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
-          color: "red",
-          icon: <IconX />,
+    return new Promise((resolve, reject) => {
+      axios
+        .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/children", {
+          path: dirPath,
         })
-      );
+        .then((response) => {
+          // for api server
+          if (server === "api")
+            setFile((prevState) => {
+              const rootPath =
+                prevState[0].path === "/" ? "" : prevState[0].path;
+              if (dirPath.startsWith(rootPath)) {
+                const pathToSearch = dirPath
+                  .substring(rootPath.length)
+                  .split("/")
+                  .filter((item) => item.length > 0);
+                const newState = {
+                  ...prevState[0],
+                  children: childFinder(
+                    prevState[0].children!,
+                    rootPath,
+                    pathToSearch,
+                    response.data
+                  ),
+                };
+                return [newState];
+              }
+              return prevState;
+            });
+          // for ssh server
+          if (server === "ssh")
+            setSSHFile((prevState) => {
+              const rootPath =
+                prevState[0].path === "/" ? "" : prevState[0].path;
+              if (dirPath.startsWith(rootPath)) {
+                const pathToSearch = dirPath
+                  .substring(rootPath.length)
+                  .split("/")
+                  .filter((item) => item.length > 0);
+                const newState = {
+                  ...prevState[0],
+                  children: childFinder(
+                    prevState[0].children!,
+                    rootPath,
+                    pathToSearch,
+                    response.data
+                  ),
+                };
+                return [newState];
+              }
+              return prevState;
+            });
+          resolve("Success");
+        })
+        .catch((err) => {
+          reject(err.response.data);
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          });
+        });
+    });
   };
 
   const childFinder = (
@@ -137,9 +140,7 @@ export default function useApi() {
     data: IChildren[]
   ): IChildren[] => {
     if (pathToSearch.length > 0) {
-      // console.log(currentPath, pathToSearch);
       currentPath = currentPath + "/" + pathToSearch[0];
-      // console.log(currentPath);
       return children.slice().map((child) => {
         if (child.path === currentPath && child.children)
           return {
@@ -158,36 +159,46 @@ export default function useApi() {
     return data;
   };
 
-  const reloadFiles = async (server: "ssh" | "api" | "") => {
+  const reloadFiles = (server: "ssh" | "api" | "", delFiles: string = "") => {
     const containerId = document.getElementById(
-      server === "api" ? "left-container" : "right-Container"
+      server === "api" ? "left-container" : "right-container"
     )!;
     const loc = containerId.scrollTop;
+    let folders = server === "api" ? folderLists : SSHfolderLists;
+    // if a folder is deleted
+    if (delFiles.length)
+      folders = folders.filter((folder) => !folder.includes(delFiles));
+    //iterate through array to fill files state
     if (server === "api") {
       setFetching(true);
-      for (const folder of folderLists) {
-        await new Promise(function (resolve) {
-          resolve(getChildren(server, folder));
-        });
-      }
-      // for (const folder of folderLists) {
-      //   await getChildren(server, folder);
-      // }
-      setFetching(false);
+      reloadFilesIterator(server, folders).then(() => {
+        setTimeout(() => {
+          setFetching(false);
+          containerId.scrollTop = loc;
+        }, 50);
+      });
     } else if (server === "ssh") {
       setFetchingSSH(true);
-      // await Promise.all(
-      //   SSHfolderLists.map(async (folder) => {
-      //     await getChildren(server, folder);
-      //   })
-      // );
-      for (const folder of SSHfolderLists) {
-        await getChildren(server, folder);
-      }
-      setFetchingSSH(false);
+      reloadFilesIterator(server, folders).then(() => {
+        setTimeout(() => {
+          setFetchingSSH(false);
+          containerId.scrollTop = loc;
+        }, 100);
+      });
     }
-    // scroll back to position
-    setTimeout(() => (containerId.scrollTop = loc), 100);
+  };
+
+  const reloadFilesIterator = async (
+    server: "ssh" | "api" | "",
+    folders: string[]
+  ) => {
+    const delay = (ms: number): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+    for (const folder of folders) {
+      await delay(server === "api" ? 50 : 100).then(() =>
+        getChildren(server, folder)
+      );
+    }
   };
 
   const deleteFiles = (server: "api" | "ssh" | "") => {
@@ -198,7 +209,15 @@ export default function useApi() {
       })
       .then((response) => {
         if (response.status === 200) {
-          reloadFiles(server);
+          if (server === "api")
+            setFolderLists((prevState) =>
+              prevState.filter((folder) => !folder.includes(files))
+            );
+          else
+            setSSHFolderLists((prevState) =>
+              prevState.filter((folder) => !folder.includes(files))
+            );
+          reloadFiles(server, files);
         }
       })
       .catch((err) =>
@@ -224,7 +243,7 @@ export default function useApi() {
         path,
       })
       .then((response) => {
-        if (response.status === 200) fetchApi(server);
+        if (response.status === 200) reloadFiles(server);
       })
       .catch((err) =>
         showNotification({
@@ -290,7 +309,17 @@ export default function useApi() {
         destPath,
       })
       .then((response) => {
-        if (response.status === 200) reloadFiles(server);
+        if (response.status === 200) {
+          if (server === "api")
+            setFolderLists((prevState) =>
+              prevState.filter((folder) => !folder.includes(sourceFile))
+            );
+          else
+            setSSHFolderLists((prevState) =>
+              prevState.filter((folder) => !folder.includes(sourceFile))
+            );
+          reloadFiles(server, sourceFile);
+        }
       })
       .catch((err) =>
         showNotification({

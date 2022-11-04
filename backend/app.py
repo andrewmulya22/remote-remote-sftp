@@ -122,11 +122,8 @@ def ssh_children():
     content = request.get_json()
     children = []
     try:
-        print(sftp.listdir(content['path']))
         for x in sftp.listdir(content['path']):
             try:
-                # code stops here (?)
-                print(x)
                 children.append(path_to_dict_ssh(
                     os.path.join(content['path'], x)))
             except Exception as e:
@@ -198,7 +195,6 @@ def move():
         os.rename(sourceFile, os.path.join(destPath, fileName))
         return "OK"
     except Exception as e:
-        print(e)
         return f"{e}", 404
 
 # file view/write
@@ -254,7 +250,6 @@ def ssh_delete():
 
 def deleteHandler(path):
     global sftp
-    print(path)
     if S_ISDIR(sftp.stat(path).st_mode):
         for x in sftp.listdir(path):
             deleteHandler(os.path.join(path, x))
@@ -299,7 +294,6 @@ def ssh_move():
         sftp.rename(sourceFile, os.path.join(destPath, fileName))
         return "OK"
     except Exception as e:
-        print(e)
         return f"{e}", 404
 
 

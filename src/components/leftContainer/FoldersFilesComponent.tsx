@@ -5,11 +5,9 @@ import {
   IconFile,
   IconFolder,
 } from "@tabler/icons";
-import axios from "axios";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import {
-  filesState,
   folderListsState,
   selectedComponentState,
   selectedFolderState,
@@ -50,7 +48,6 @@ const FoldersFilesComponent = ({
     "api",
     files.path
   );
-  const [files_state, setFiles] = useRecoilState(filesState);
 
   //Check if folder was opened
   const [value, setValue] = useState(
@@ -64,16 +61,18 @@ const FoldersFilesComponent = ({
 
   const arrowClickHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setValue((prevValue) => !prevValue);
     //set opened folder
-    if (value)
+    if (value) {
       setFolderLists((prevLists) =>
         prevLists.filter((list) => list !== files.path)
       );
-    else {
-      setFolderLists((prevLists) => [...prevLists, files.path]);
+      setValue((prevValue) => !prevValue);
+    } else {
       //get children folder
-      getChildren("api", files.path);
+      getChildren("api", files.path).then(() => {
+        setFolderLists((prevLists) => [...prevLists, files.path]);
+        setValue((prevValue) => !prevValue);
+      });
     }
   };
 
