@@ -108,6 +108,13 @@ const FoldersFilesRightComponent = ({
       moveFile("ssh", sourcefile, files.path);
   };
 
+  //add scroll back when context menu is off
+  useEffect(() => {
+    if (!show)
+      document.getElementById("right-container")!.style.overflow = "auto";
+  }, [show]);
+
+  //render
   return (
     <>
       {show ? (
@@ -131,6 +138,7 @@ const FoldersFilesRightComponent = ({
           fillSelectedFolder();
           handleContextMenu(event);
           setSelectedComponent(files.path);
+          document.getElementById("right-container")!.style.overflow = "hidden";
         }}
         //COMPONENT DRAG HANDLER
         draggable

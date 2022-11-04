@@ -106,6 +106,13 @@ const FoldersFilesComponent = ({
     }
   };
 
+  //add scroll back when context menu is off
+  useEffect(() => {
+    if (!show)
+      document.getElementById("left-container")!.style.overflow = "auto";
+  }, [show]);
+
+  //render
   return (
     <>
       {show ? (
@@ -132,6 +139,7 @@ const FoldersFilesComponent = ({
           fillSelectedFolder();
           setSelectedComponent(files.path);
           setRename(false);
+          document.getElementById("left-container")!.style.overflow = "hidden";
         }}
         //COMPONENT DRAG HANDLER
         draggable
