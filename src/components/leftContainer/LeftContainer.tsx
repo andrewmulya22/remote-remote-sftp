@@ -1,14 +1,13 @@
 import { createStyles } from "@mantine/core";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { fetchingState, filesState } from "../../atoms/apiServerState";
+import { filesState } from "../../atoms/apiServerState";
 import useApi from "../../hooks/useApi";
 import FoldersFilesComponent from "./FoldersFilesComponent";
 
 const LeftContainer = () => {
   const { classes } = useStyles();
   const files = useRecoilValue(filesState);
-  const fetching = useRecoilValue(fetchingState);
   const { fetchApi } = useApi();
 
   useEffect(() => {

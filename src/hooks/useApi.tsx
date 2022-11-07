@@ -173,17 +173,25 @@ export default function useApi() {
     const loc = containerId.scrollTop;
     let folders = server === "api" ? [...folderLists] : [...SSHfolderLists];
     // if a folder is deleted, remove from opened folders array
-    if (filesExc.name.length && filesExc.type === "delete") {
-      folders = folders.filter((folder) => !folder.includes(filesExc.name[0]));
-    }
-    //if a folder is renamed or moved, replace opened folder in folder array with new name
-    if (filesExc.name.length && filesExc.type === "rename") {
-      folders = folders.map((folder) =>
-        folder.includes(filesExc.name[0])
-          ? folder.replace(filesExc.name[0], filesExc.name[1])
-          : folder
-      );
-      server === "api" ? setFolderLists(folders) : setSSHFolderLists(folders);
+    if (filesExc.name.length) {
+      if (
+        filesExc.type === "delete" ||
+        !folders.filter(
+          (folder) =>
+            folder === filesExc.name[1].split("/").slice(0, -1).join("/")
+        ).length
+      ) {
+        folders = folders.filter(
+          (folder) => !folder.includes(filesExc.name[0])
+        );
+      } else if (filesExc.type === "rename") {
+        folders = folders.map((folder) =>
+          folder.includes(filesExc.name[0])
+            ? folder.replace(filesExc.name[0], filesExc.name[1])
+            : folder
+        );
+        server === "api" ? setFolderLists(folders) : setSSHFolderLists(folders);
+      }
     }
 
     //iterate through array to fill files state
