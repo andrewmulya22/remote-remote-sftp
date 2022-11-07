@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconFile,
   IconFolder,
+  IconSlice,
 } from "@tabler/icons";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -18,6 +19,7 @@ import useContextMenu from "../../hooks/useContextMenu";
 import useUploadDownload from "../../hooks/useUploadDownload";
 import ContextMenu from "../Menu/ContextMenu";
 import "./LeftContainer.css";
+import { useScrollIntoView } from "@mantine/hooks";
 
 interface IChildren {
   type: string;
@@ -48,6 +50,7 @@ const FoldersFilesComponent = ({
     "api",
     files.path
   );
+  const { scrollIntoView, targetRef } = useScrollIntoView<HTMLDivElement>();
 
   //Check if folder was opened
   const [value, setValue] = useState(
@@ -83,7 +86,8 @@ const FoldersFilesComponent = ({
 
   const renameHandler = () => {
     setRename(false);
-    renameFile("api", inputValue, files.path);
+    renameFile("api", inputValue, files.path, files.type);
+    scrollIntoView({ alignment: "center" });
   };
 
   const fillSelectedFolder = () => {
@@ -98,7 +102,8 @@ const FoldersFilesComponent = ({
     if (
       source === "api" &&
       files.type === "folder" &&
-      files.path !== sourcefile
+      files.path !== sourcefile &&
+      sourcefile.split("/").slice(0, -1).join("/") !== files.path
     )
       moveFile("api", sourcefile, files.path);
     if (source === "ssh" && files.type === "folder") {
@@ -152,6 +157,7 @@ const FoldersFilesComponent = ({
         onDrop={onDropHandler}
       >
         <div
+          ref={targetRef}
           className={classes.dropdown}
           style={{
             marginLeft: `${(count - 1) * 30}px`,

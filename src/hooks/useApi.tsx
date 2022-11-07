@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import {
   fetchingState,
   filesState,
@@ -33,8 +33,12 @@ export default function useApi() {
   const setFile = useSetRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
   //selected components
-  const selectedComponent = useRecoilValue(selectedComponentState);
-  const selectedSSHComponent = useRecoilValue(selectedSSHComponentState);
+  const [selectedComponent, setSelectedComponent] = useRecoilState(
+    selectedComponentState
+  );
+  const [selectedSSHComponent, setSelectedSSHComponent] = useRecoilState(
+    selectedSSHComponentState
+  );
   //opened folders
   const [folderLists, setFolderLists] = useRecoilState(folderListsState);
   const [SSHfolderLists, setSSHFolderLists] =
@@ -159,15 +163,29 @@ export default function useApi() {
     return data;
   };
 
-  const reloadFiles = (server: "ssh" | "api" | "", delFiles: string = "") => {
+  const reloadFiles = (
+    server: "ssh" | "api" | "",
+    filesExc: { type: string; name: string[] } = { type: "", name: [] }
+  ) => {
     const containerId = document.getElementById(
       server === "api" ? "left-container" : "right-container"
     )!;
     const loc = containerId.scrollTop;
-    let folders = server === "api" ? folderLists : SSHfolderLists;
-    // if a folder is deleted
-    if (delFiles.length)
-      folders = folders.filter((folder) => !folder.includes(delFiles));
+    let folders = server === "api" ? [...folderLists] : [...SSHfolderLists];
+    // if a folder is deleted, remove from opened folders array
+    if (filesExc.name.length && filesExc.type === "delete") {
+      folders = folders.filter((folder) => !folder.includes(filesExc.name[0]));
+    }
+    //if a folder is renamed or moved, replace opened folder in folder array with new name
+    if (filesExc.name.length && filesExc.type === "rename") {
+      folders = folders.map((folder) =>
+        folder.includes(filesExc.name[0])
+          ? folder.replace(filesExc.name[0], filesExc.name[1])
+          : folder
+      );
+      server === "api" ? setFolderLists(folders) : setSSHFolderLists(folders);
+    }
+
     //iterate through array to fill files state
     if (server === "api") {
       setFetching(true);
@@ -175,7 +193,7 @@ export default function useApi() {
         setTimeout(() => {
           setFetching(false);
           containerId.scrollTop = loc;
-        }, 50);
+        });
       });
     } else if (server === "ssh") {
       setFetchingSSH(true);
@@ -183,7 +201,7 @@ export default function useApi() {
         setTimeout(() => {
           setFetchingSSH(false);
           containerId.scrollTop = loc;
-        }, 100);
+        });
       });
     }
   };
@@ -217,7 +235,10 @@ export default function useApi() {
             setSSHFolderLists((prevState) =>
               prevState.filter((folder) => !folder.includes(files))
             );
-          reloadFiles(server, files);
+          reloadFiles(server, {
+            type: "delete",
+            name: [files],
+          });
         }
       })
       .catch((err) =>
@@ -278,15 +299,26 @@ export default function useApi() {
   const renameFile = (
     server: "api" | "ssh" | "",
     fileName: string,
-    sourceFile: string
+    sourceFile: string,
+    type: string
   ) => {
+    const dest = sourceFile.split("/").slice(0, -1).join("/") + "/" + fileName;
     axios
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/rename", {
         fileName,
         sourceFile,
       })
       .then((response) => {
-        if (response.status === 200) reloadFiles(server);
+        if (response.status === 200) {
+          if (type === "folder")
+            reloadFiles(server, {
+              type: "rename",
+              name: [sourceFile, dest],
+            });
+          else reloadFiles(server);
+          if (server === "api") setSelectedComponent(dest);
+          if (server === "ssh") setSelectedSSHComponent(dest);
+        }
       })
       .catch((err) =>
         showNotification({
@@ -318,7 +350,13 @@ export default function useApi() {
             setSSHFolderLists((prevState) =>
               prevState.filter((folder) => !folder.includes(sourceFile))
             );
-          reloadFiles(server, sourceFile);
+          reloadFiles(server, {
+            type: "rename",
+            name: [
+              sourceFile,
+              destPath + "/" + sourceFile.split("/").slice(-1)[0],
+            ],
+          });
         }
       })
       .catch((err) =>

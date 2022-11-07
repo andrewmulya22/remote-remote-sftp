@@ -17,6 +17,7 @@ import useApi from "../../hooks/useApi";
 import useContextMenu from "../../hooks/useContextMenu";
 import useUploadDownload from "../../hooks/useUploadDownload";
 import ContextMenu from "../Menu/ContextMenu";
+import { useScrollIntoView } from "@mantine/hooks";
 
 interface IChildren {
   type: string;
@@ -47,6 +48,7 @@ const FoldersFilesRightComponent = ({
     "ssh",
     files.path
   );
+  const { scrollIntoView, targetRef } = useScrollIntoView<HTMLDivElement>();
 
   //Check if folder was opened
   const [value, setValue] = useState(
@@ -59,7 +61,7 @@ const FoldersFilesRightComponent = ({
         ? true
         : false
     );
-  }, [folderLists]);
+  }, [setValue, folderLists, files.path]);
 
   const arrowClickHandler = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,7 +87,8 @@ const FoldersFilesRightComponent = ({
 
   const renameHandler = () => {
     setRename(false);
-    renameFile("ssh", inputValue, files.path);
+    renameFile("ssh", inputValue, files.path, files.type);
+    scrollIntoView({ alignment: "center" });
   };
 
   const fillSelectedFolder = () => {
@@ -103,7 +106,8 @@ const FoldersFilesRightComponent = ({
     if (
       source === "ssh" &&
       files.type === "folder" &&
-      files.path !== sourcefile
+      files.path !== sourcefile &&
+      sourcefile.split("/").slice(0, -1).join("/") !== files.path
     )
       moveFile("ssh", sourcefile, files.path);
   };
@@ -151,6 +155,7 @@ const FoldersFilesRightComponent = ({
         onDrop={onDropHandler}
       >
         <div
+          ref={targetRef}
           className={classes.dropdown}
           style={{
             marginLeft: `${(count - 1) * 30}px`,
