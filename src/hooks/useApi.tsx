@@ -54,7 +54,6 @@ export default function useApi() {
   ) => {
     if (server === "api") setFetching(true);
     if (server === "ssh") setFetchingSSH(true);
-    console.log(server_type);
     axios
       .get(process.env.REACT_APP_SERVER_URL + "/" + server, {
         params: {

@@ -4,6 +4,7 @@ import axios from "axios";
 import { useSetRecoilState } from "recoil";
 import {
   connectionTypeState,
+  selectedSSHFolderState,
   SSHAuthState,
   SSHfolderListsState,
 } from "../atoms/sshServerState";
@@ -14,6 +15,7 @@ export default function useLogin() {
   const setSSHAuth = useSetRecoilState(SSHAuthState);
   const setFolderLists = useSetRecoilState(SSHfolderListsState);
   const setConnectionType = useSetRecoilState(connectionTypeState);
+  const setSelectedSSHFolder = useSetRecoilState(selectedSSHFolderState);
 
   const ssh_login_handler = (
     server_type: string,
@@ -34,6 +36,7 @@ export default function useLogin() {
           fetchApi("ssh", server_type);
           setSSHAuth(true);
           setFolderLists([]);
+          setSelectedSSHFolder("");
         }
       })
       .catch((err) => {

@@ -48,7 +48,8 @@ def ssh_login():
             return f"{e}", 500
     elif server_type == "ftp":
         try:
-            ftp_host = ftputil.FTPHost(host, username, password)
+            ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
+                encoding="UTF-8"))
             ftp_host.use_list_a_option = True
             return "OK"
         except Exception as e:
@@ -68,12 +69,6 @@ def path_to_dict(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
-        # for x in os.listdir(path):
-        #     if not x.startswith('.'):
-        #         try:
-        #             d['children'].append(path_to_dict(os.path.join(path, x)))
-        #         except:
-        #             continue
     else:
         d['type'] = "file"
         d['size'] = os.path.getsize(path)
@@ -94,12 +89,6 @@ def path_to_dict_ssh(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
-        # for x in sftp.listdir(path):
-        #     try:
-        #         d['children'].append(path_to_dict_ssh(
-        #             os.path.join(path, x)))
-        #     except:
-        #         continue
     else:
         d['type'] = "file"
         d['size'] = fileState.st_size
@@ -289,12 +278,10 @@ def ssh():
 @app.route('/ssh/delete', methods=['POST'])
 def ssh_delete():
     content = request.get_json()
-    print(content['files'])
     try:
         deleteHandler(content['files'], content['server_type'])
         return "OK", 200
     except Exception as e:
-        print(e)
         return f"{e}", 500
 
 

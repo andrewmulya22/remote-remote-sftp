@@ -43,7 +43,6 @@ const HeaderContainer = () => {
 
   const ssh_login = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(SERVERSELECT.current!.value);
     if (
       SERVERSELECT.current!.value &&
       SSHHOST.current!.value &&
