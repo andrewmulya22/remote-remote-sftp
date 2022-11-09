@@ -4,7 +4,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../../atoms/apiServerState";
 import { editModalState } from "../../atoms/modalState";
-import { selectedSSHComponentState } from "../../atoms/sshServerState";
+import {
+  connectionTypeState,
+  selectedSSHComponentState,
+} from "../../atoms/sshServerState";
 import useApi from "../../hooks/useApi";
 import "./ModalStyle.css";
 
@@ -23,6 +26,8 @@ const EditModal = () => {
   //edited files
   const selectedComponent = useRecoilValue(selectedComponentState);
   const selectedSSHComponent = useRecoilValue(selectedSSHComponentState);
+
+  const connectionType = useRecoilValue(connectionTypeState);
 
   //edit file API call
   const { editFile } = useApi();
@@ -57,6 +62,7 @@ const EditModal = () => {
               modalOpened.server === "api"
                 ? selectedComponent
                 : selectedSSHComponent,
+            server_type: connectionType,
           }
         )
         .then((resp) => {
@@ -72,7 +78,13 @@ const EditModal = () => {
           setError(err.response.data);
         });
     }
-  }, [setValue, selectedComponent, selectedSSHComponent, modalOpened]);
+  }, [
+    setValue,
+    selectedComponent,
+    selectedSSHComponent,
+    modalOpened,
+    connectionType,
+  ]);
 
   const changeValueHandler = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);

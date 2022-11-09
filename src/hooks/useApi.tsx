@@ -1,6 +1,6 @@
 import axios from "axios";
 import React from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   fetchingState,
   filesState,
@@ -8,6 +8,7 @@ import {
   selectedComponentState,
 } from "../atoms/apiServerState";
 import {
+  connectionTypeState,
   fetchingSSHState,
   selectedSSHComponentState,
   SSHFilesState,
@@ -44,12 +45,22 @@ export default function useApi() {
   const [SSHfolderLists, setSSHFolderLists] =
     useRecoilState(SSHfolderListsState);
 
+  const connectionType = useRecoilValue(connectionTypeState);
+
   //FUNCTIONS
-  const fetchApi = (server: "api" | "ssh" | "") => {
+  const fetchApi = (
+    server: "api" | "ssh" | "",
+    server_type: string = "sftp"
+  ) => {
     if (server === "api") setFetching(true);
     if (server === "ssh") setFetchingSSH(true);
+    console.log(server_type);
     axios
-      .get(process.env.REACT_APP_SERVER_URL + "/" + server)
+      .get(process.env.REACT_APP_SERVER_URL + "/" + server, {
+        params: {
+          server_type,
+        },
+      })
       .then((response) => {
         if (server === "api") {
           setFile(response.data);
@@ -60,14 +71,15 @@ export default function useApi() {
           setFetchingSSH(false);
         }
       })
-      .catch((err) =>
+      .catch((err) => {
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
           color: "red",
           icon: <IconX />,
-        })
-      );
+        });
+        setFetchingSSH(false);
+      });
   };
 
   const getChildren = async (server: "api" | "ssh" | "", dirPath: string) => {
@@ -75,6 +87,7 @@ export default function useApi() {
       axios
         .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/children", {
           path: dirPath,
+          server_type: connectionType,
         })
         .then((response) => {
           // for api server
@@ -232,6 +245,7 @@ export default function useApi() {
     axios
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/delete", {
         files,
+        server_type: connectionType,
       })
       .then((response) => {
         if (response.status === 200) {
@@ -270,6 +284,7 @@ export default function useApi() {
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/newfolder", {
         folderName,
         path,
+        server_type: connectionType,
       })
       .then((response) => {
         if (response.status === 200) reloadFiles(server);
@@ -293,6 +308,7 @@ export default function useApi() {
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/editfile", {
         filePath,
         fileData,
+        server_type: connectionType,
       })
       .catch((err) =>
         showNotification({
@@ -315,6 +331,7 @@ export default function useApi() {
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/rename", {
         fileName,
         sourceFile,
+        server_type: connectionType,
       })
       .then((response) => {
         if (response.status === 200) {
@@ -347,6 +364,7 @@ export default function useApi() {
       .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/move", {
         sourceFile,
         destPath,
+        server_type: connectionType,
       })
       .then((response) => {
         if (response.status === 200) {

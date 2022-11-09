@@ -4,7 +4,10 @@ import axios from "axios";
 import React from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { selectedComponentState } from "../atoms/apiServerState";
-import { selectedSSHComponentState } from "../atoms/sshServerState";
+import {
+  connectionTypeState,
+  selectedSSHComponentState,
+} from "../atoms/sshServerState";
 import { downloadQState, uploadQState } from "../atoms/uploadDownloadState";
 import useApi from "./useApi";
 
@@ -15,6 +18,8 @@ export default function useUploadDownload() {
   const setUploadQ = useSetRecoilState(uploadQState);
   const setDownloadQ = useSetRecoilState(downloadQState);
   const { reloadFiles } = useApi();
+  //server type
+  const connectionType = useRecoilValue(connectionTypeState);
 
   // DOWNLOAD FILE
   const downloadFile = (
@@ -33,6 +38,7 @@ export default function useUploadDownload() {
         downloadID,
         sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
         destFile: destFile === null ? selectedAPIFile : destFile,
+        server_type: connectionType,
       })
       .then(() => {
         downloadDone = true;
@@ -50,6 +56,7 @@ export default function useUploadDownload() {
         .get(process.env.REACT_APP_SERVER_URL + "/sftpget", {
           params: {
             downloadID,
+            server_type: connectionType,
           },
         })
         // add to download queue
@@ -86,6 +93,7 @@ export default function useUploadDownload() {
         axios.delete(process.env.REACT_APP_SERVER_URL + "/sftpget", {
           params: {
             downloadID,
+            server_type: connectionType,
           },
         });
         //remove from download queue
@@ -114,6 +122,7 @@ export default function useUploadDownload() {
         uploadID,
         sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
         destFile: destFile === null ? selectedSSHFile : destFile,
+        server_type: connectionType,
       })
       .then(() => {
         uploadDone = true;
@@ -131,6 +140,7 @@ export default function useUploadDownload() {
         .get(process.env.REACT_APP_SERVER_URL + "/sftpput", {
           params: {
             uploadID,
+            server_type: connectionType,
           },
         })
         // add to download queue
@@ -167,6 +177,7 @@ export default function useUploadDownload() {
         axios.delete(process.env.REACT_APP_SERVER_URL + "/sftpput", {
           params: {
             uploadID,
+            server_type: connectionType,
           },
         });
         //remove from download queue

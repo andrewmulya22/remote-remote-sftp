@@ -1,31 +1,37 @@
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import axios from "axios";
-import React from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { SSHAuthState, SSHfolderListsState } from "../atoms/sshServerState";
+import { useSetRecoilState } from "recoil";
+import {
+  connectionTypeState,
+  SSHAuthState,
+  SSHfolderListsState,
+} from "../atoms/sshServerState";
 import useApi from "./useApi";
 
 export default function useLogin() {
   const { fetchApi } = useApi();
   const setSSHAuth = useSetRecoilState(SSHAuthState);
   const setFolderLists = useSetRecoilState(SSHfolderListsState);
-  const folderLists = useRecoilValue(SSHfolderListsState);
+  const setConnectionType = useSetRecoilState(connectionTypeState);
 
   const ssh_login_handler = (
+    server_type: string,
     host: string,
     username: string,
     password: string
   ) => {
     axios
       .post(process.env.REACT_APP_SERVER_URL + "/ssh_login", {
+        server_type,
         host,
         username,
         password,
       })
       .then((response) => {
         if (response.status === 200) {
-          fetchApi("ssh");
+          setConnectionType(server_type);
+          fetchApi("ssh", server_type);
           setSSHAuth(true);
           setFolderLists([]);
         }

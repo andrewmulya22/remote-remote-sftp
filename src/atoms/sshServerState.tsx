@@ -9,6 +9,11 @@ interface IChildren {
   children?: IChildren[];
 }
 
+export const connectionTypeState = atom<string>({
+  key: "connectionTypeState",
+  default: "sftp",
+});
+
 //Auth status
 export const SSHAuthState = atom<boolean>({
   key: "SSHAuthState",

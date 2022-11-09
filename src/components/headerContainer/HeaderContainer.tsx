@@ -5,6 +5,7 @@ import {
   Group,
   Input,
   Loader,
+  NativeSelect,
   PasswordInput,
   Text,
 } from "@mantine/core";
@@ -13,6 +14,7 @@ import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { fetchingState, selectedFolderState } from "../../atoms/apiServerState";
 import {
+  connectionTypeState,
   fetchingSSHState,
   selectedSSHFolderState,
   SSHAuthState,
@@ -28,28 +30,38 @@ const HeaderContainer = () => {
   const fetchingSSH = useRecoilValue(fetchingSSHState);
   const selectedFolderLeft = useRecoilValue(selectedFolderState);
   const selectedFolderRight = useRecoilValue(selectedSSHFolderState);
+  const connectionType = useRecoilValue(connectionTypeState);
 
   //ssh ref
+  const SERVERSELECT = useRef<HTMLSelectElement>(null);
   const SSHHOST = useRef<HTMLInputElement>(null);
   const SSHUSERNAME = useRef<HTMLInputElement>(null);
   const SSHPASSWORD = useRef<HTMLInputElement>(null);
   const SSHAuth = useRecoilValue(SSHAuthState);
 
-  const api_login = () => {};
+  // const api_login = () => {};
 
   const ssh_login = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(SERVERSELECT.current!.value);
     if (
+      SERVERSELECT.current!.value &&
       SSHHOST.current!.value &&
       SSHUSERNAME.current!.value &&
       SSHPASSWORD.current!.value
     )
       ssh_login_handler(
+        SERVERSELECT.current!.value,
         SSHHOST.current!.value,
         SSHUSERNAME.current!.value,
         SSHPASSWORD.current!.value
       );
   };
+
+  const serverSelect = [
+    { value: "sftp", label: "SFTP" },
+    { value: "ftp", label: "FTP" },
+  ];
 
   return (
     <>
@@ -58,11 +70,11 @@ const HeaderContainer = () => {
           <Group position="center">
             <Badge size="lg">APIサーバ</Badge>
             <Input placeholder="Host" />
-            <Input placeholder="Username" />
+            {/* <Input placeholder="Username" />
             <PasswordInput
               placeholder="Password"
               className={classes.passwordInputStyle}
-            />
+            /> */}
             <Button type="submit" value="Submit">
               接続
             </Button>
@@ -77,7 +89,12 @@ const HeaderContainer = () => {
           }}
         >
           <Group position="center">
-            <Badge size="lg">SFTPサーバ</Badge>
+            {/* <Badge size="lg">{connectionType}サーバ</Badge> */}
+            <NativeSelect
+              data={serverSelect}
+              ref={SERVERSELECT}
+              // onChange={(e) => setConnectionType(e.currentTarget.value)}
+            />
             <Input placeholder="Host" ref={SSHHOST} />
             <Input placeholder="Username" ref={SSHUSERNAME} />
             <PasswordInput
@@ -114,7 +131,7 @@ const HeaderContainer = () => {
           {fetching ? <Loader size="sm" /> : <></>}
         </Group>
         <Group position="center">
-          <Text>SSHサイト</Text>
+          <Text>{connectionType.toUpperCase()}サイト</Text>
           <Input
             size="xs"
             className={classes.siteInputStyle}
