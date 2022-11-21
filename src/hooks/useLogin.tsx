@@ -1,21 +1,56 @@
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import axios from "axios";
-import { useSetRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import {
   connectionTypeState,
   selectedSSHFolderState,
   SSHAuthState,
+  SSHFilesState,
   SSHfolderListsState,
 } from "../atoms/sshServerState";
 import useApi from "./useApi";
+import { URLState } from "../atoms/URLState";
+import {
+  filesState,
+  folderListsState,
+  selectedFolderState,
+} from "../atoms/apiServerState";
+import { useEffect } from "react";
 
 export default function useLogin() {
   const { fetchApi } = useApi();
+  //file states
+  const [file, setFile] = useRecoilState(filesState);
+  const setSSHFile = useSetRecoilState(SSHFilesState);
   const setSSHAuth = useSetRecoilState(SSHAuthState);
-  const setFolderLists = useSetRecoilState(SSHfolderListsState);
+
+  //Other state
+  const setFolderLists = useSetRecoilState(folderListsState);
+  const setSSHFolderLists = useSetRecoilState(SSHfolderListsState);
   const setConnectionType = useSetRecoilState(connectionTypeState);
+  const setSelectedFolder = useSetRecoilState(selectedFolderState);
   const setSelectedSSHFolder = useSetRecoilState(selectedSSHFolderState);
+  const [URL, setURL] = useRecoilState(URLState);
+
+  const api_login_handler = (host: string) => {
+    if (host !== URL) {
+      // reset API server files
+      setFile([]);
+      setURL(host);
+      setFolderLists([]);
+      setSelectedFolder("");
+      //reset SSH states
+      setSSHFile([]);
+      setSSHAuth(false);
+      setSSHFolderLists([]);
+      setSelectedSSHFolder("");
+    }
+  };
+
+  useEffect(() => {
+    if (URL) fetchApi("api");
+  }, [URL]);
 
   const ssh_login_handler = (
     server_type: string,
@@ -23,10 +58,22 @@ export default function useLogin() {
     username: string,
     password: string
   ) => {
+    if (!file.length) {
+      showNotification({
+        title: "API server error",
+        message: "Please enter API server's hostname",
+        color: "red",
+        icon: <IconX />,
+      });
+      return;
+    }
+    const hostname = /^\w+:\/\//i.test(host)
+      ? host.match(/^\w+:\/\/([^\/]+)\/?$/i)![1]
+      : host;
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/ssh_login", {
+      .post(URL + "/ssh_login", {
         server_type,
-        host,
+        host: hostname,
         username,
         password,
       })
@@ -35,7 +82,7 @@ export default function useLogin() {
           setConnectionType(server_type);
           fetchApi("ssh", server_type);
           setSSHAuth(true);
-          setFolderLists([]);
+          setSSHFolderLists([]);
           setSelectedSSHFolder("");
         }
       })
@@ -49,5 +96,5 @@ export default function useLogin() {
       });
   };
 
-  return { ssh_login_handler };
+  return { api_login_handler, ssh_login_handler };
 }

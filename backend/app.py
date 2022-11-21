@@ -29,6 +29,7 @@ default_path_ssh = '/'
 
 @app.route('/ssh_login', methods=['POST'])
 def ssh_login():
+    print("test")
     global client, sftp, host, username, password, ftp_host
     try:
         client.close() or ftp_host.close()
@@ -103,15 +104,47 @@ def path_to_dict_ftp(path):
         d = {'name': os.path.basename(path)}
     d['path'] = os.path.abspath(path)
     # file data
-    d['modified'] = ftp_host.path.getmtime(path)
+    try:
+        d['modified'] = ftp_host.path.getmtime(path)
+    except:
+        d['modified'] = ""
     if ftp_host.path.isdir(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
     else:
         d['type'] = "file"
-        d['size'] = ftp_host.path.getsize(path)
+        try:
+            d['size'] = ftp_host.path.getsize(path)
+        except:
+            d['size'] = 0
     return d
+
+# abort operation (download/upload)
+
+
+def ssh_abort(server_type):
+    global client, sftp, host, username, password, ftp_host
+    try:
+        client.close() or ftp_host.close()
+    except:
+        pass
+    if server_type == "sftp":
+        try:
+            # client.connect(host, username=username, password=password)
+            sftp = client.open_sftp()
+            return "OK"
+        except Exception as e:
+            return f"{e}", 500
+    elif server_type == "ftp":
+        try:
+            ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
+                encoding="UTF-8"))
+            ftp_host.use_list_a_option = True
+            return "OK"
+        except Exception as e:
+            return f"{e}", 500
+
 
 # FETCH CHILDREN DATA #
 
@@ -265,7 +298,10 @@ def ssh():
         if server_type == "sftp":
             data = [path_to_dict_ssh(default_path_ssh)]
         elif server_type == "ftp":
-            data = [path_to_dict_ftp("/home/" + username)]
+            try:
+                data = [path_to_dict_ftp("/")]
+            except:
+                data = [path_to_dict_ftp("/home/" + username)]
         response = app.response_class(
             response=json.dumps(data),
             mimetype='application/json'

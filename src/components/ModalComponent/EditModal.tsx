@@ -10,11 +10,13 @@ import {
 } from "../../atoms/sshServerState";
 import useApi from "../../hooks/useApi";
 import "./ModalStyle.css";
+import { URLState } from "../../atoms/URLState";
 
 const EditModal = () => {
   //modal management
   const [modalOpened, setModalOpened] = useRecoilState(editModalState);
   const { classes } = useStyles();
+  const URL = useRecoilValue(URLState);
 
   //file data and error
   const [value, setValue] = useState("");
@@ -53,10 +55,8 @@ const EditModal = () => {
     ) {
       axios
         .post(
-          process.env.REACT_APP_SERVER_URL +
-            "/" +
-            modalOpened.server +
-            "/filedata",
+          // process.env.REACT_APP_SERVER_URL +
+          URL + "/" + modalOpened.server + "/filedata",
           {
             filePath:
               modalOpened.server === "api"
@@ -102,6 +102,8 @@ const EditModal = () => {
       size="50%"
       centered
       className={classes.modalStyle}
+      overflow="inside"
+      closeOnClickOutside={false}
     >
       <form onSubmit={(e) => formHandler(e)}>
         {error.length ? (

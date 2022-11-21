@@ -10,8 +10,10 @@ import {
 } from "../atoms/sshServerState";
 import { downloadQState, uploadQState } from "../atoms/uploadDownloadState";
 import useApi from "./useApi";
+import { URLState } from "../atoms/URLState";
 
 export default function useUploadDownload() {
+  const URL = useRecoilValue(URLState);
   //State management
   const selectedAPIFile = useRecoilValue(selectedComponentState);
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
@@ -34,7 +36,7 @@ export default function useUploadDownload() {
       { id: downloadID, name: "", progress: 0 },
     ]);
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/sftpget", {
+      .post(URL + "/sftpget", {
         downloadID,
         sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
         destFile: destFile === null ? selectedAPIFile : destFile,
@@ -43,17 +45,18 @@ export default function useUploadDownload() {
       .then(() => {
         downloadDone = true;
       })
-      .catch((err) =>
+      .catch((err) => {
+        downloadDone = true;
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
           color: "red",
           icon: <IconX />,
-        })
-      );
+        });
+      });
     const getProgress = () => {
       axios
-        .get(process.env.REACT_APP_SERVER_URL + "/sftpget", {
+        .get(URL + "/sftpget", {
           params: {
             downloadID,
             server_type: connectionType,
@@ -61,6 +64,7 @@ export default function useUploadDownload() {
         })
         // add to download queue
         .then((response) => {
+          // if(response.status === 200){
           const downloadingFile = Object.keys(response.data)[0];
           //update download queue
           setDownloadQ((prevState) =>
@@ -74,6 +78,7 @@ export default function useUploadDownload() {
               return state;
             })
           );
+          // }
         })
         .catch((err) =>
           showNotification({
@@ -90,7 +95,7 @@ export default function useUploadDownload() {
       if (downloadDone) {
         clearInterval(progressInterval);
         // clear download array
-        axios.delete(process.env.REACT_APP_SERVER_URL + "/sftpget", {
+        axios.delete(URL + "/sftpget", {
           params: {
             downloadID,
             server_type: connectionType,
@@ -118,7 +123,7 @@ export default function useUploadDownload() {
       { id: uploadID, name: "", progress: 0 },
     ]);
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/sftpput", {
+      .post(URL + "/sftpput", {
         uploadID,
         sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
         destFile: destFile === null ? selectedSSHFile : destFile,
@@ -127,17 +132,18 @@ export default function useUploadDownload() {
       .then(() => {
         uploadDone = true;
       })
-      .catch((err) =>
+      .catch((err) => {
+        uploadDone = true;
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
           color: "red",
           icon: <IconX />,
-        })
-      );
+        });
+      });
     const getProgress = () => {
       axios
-        .get(process.env.REACT_APP_SERVER_URL + "/sftpput", {
+        .get(URL + "/sftpput", {
           params: {
             uploadID,
             server_type: connectionType,
@@ -174,7 +180,7 @@ export default function useUploadDownload() {
       if (uploadDone) {
         clearInterval(progressInterval);
         // clear download array
-        axios.delete(process.env.REACT_APP_SERVER_URL + "/sftpput", {
+        axios.delete(URL + "/sftpput", {
           params: {
             uploadID,
             server_type: connectionType,

@@ -3,12 +3,12 @@ import os
 import functools
 my_session_factory = ftputil.session.session_factory(
     encoding="UTF-8")
-ftp_host = ftputil.FTPHost("169.254.43.228", "pi",
-                           "net%1528", session_factory=my_session_factory)
+ftp_host = ftputil.FTPHost("invoice.cocona.jp", "u9950005_0003",
+                           "6rn93mWc", session_factory=my_session_factory)
 
 bytes = 0
 
-print(ftp_host.listdir("/home/pi/Downloads/"))
+print(ftp_host.path.getsize("/"))
 
 
 def callbackfunc(filesize, chunk):

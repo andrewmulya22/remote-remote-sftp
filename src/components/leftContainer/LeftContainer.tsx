@@ -8,12 +8,12 @@ import FoldersFilesComponent from "./FoldersFilesComponent";
 const LeftContainer = () => {
   const { classes } = useStyles();
   const files = useRecoilValue(filesState);
-  const { fetchApi } = useApi();
+  // const { fetchApi } = useApi();
 
-  useEffect(() => {
-    fetchApi("api");
-    // eslint-disable-next-line
-  }, []);
+  // useEffect(() => {
+  //   fetchApi("api");
+  //   // eslint-disable-next-line
+  // }, []);
   return (
     <div className={classes.container} id="left-container">
       {files

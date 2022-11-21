@@ -1,5 +1,5 @@
 import axios from "axios";
-import React from "react";
+import React, { useEffect } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   fetchingState,
@@ -16,6 +16,7 @@ import {
 } from "../atoms/sshServerState";
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
+import { URLState } from "../atoms/URLState";
 
 interface IChildren {
   type: string;
@@ -27,6 +28,7 @@ interface IChildren {
 }
 
 export default function useApi() {
+  const URL = useRecoilValue(URLState);
   //fetching state
   const setFetching = useSetRecoilState(fetchingState);
   const setFetchingSSH = useSetRecoilState(fetchingSSHState);
@@ -55,7 +57,7 @@ export default function useApi() {
     if (server === "api") setFetching(true);
     if (server === "ssh") setFetchingSSH(true);
     axios
-      .get(process.env.REACT_APP_SERVER_URL + "/" + server, {
+      .get(URL + "/" + server, {
         params: {
           server_type,
         },
@@ -71,20 +73,26 @@ export default function useApi() {
         }
       })
       .catch((err) => {
+        let title = "Error: Host not found";
+        let message = err.message ? err.message : "Network Error";
+        if (err.response) {
+          title = `Error ${err.response.status}`;
+          message = err.response.data;
+        }
         showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
+          title,
+          message,
           color: "red",
           icon: <IconX />,
         });
-        setFetchingSSH(false);
+        server === "api" ? setFetching(false) : setFetchingSSH(false);
       });
   };
 
   const getChildren = async (server: "api" | "ssh" | "", dirPath: string) => {
     return new Promise((resolve, reject) => {
       axios
-        .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/children", {
+        .post(URL + "/" + server + "/children", {
           path: dirPath,
           server_type: connectionType,
         })
@@ -242,7 +250,7 @@ export default function useApi() {
   const deleteFiles = (server: "api" | "ssh" | "") => {
     const files = server === "api" ? selectedComponent : selectedSSHComponent;
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/delete", {
+      .post(URL + "/" + server + "/delete", {
         files,
         server_type: connectionType,
       })
@@ -280,7 +288,7 @@ export default function useApi() {
     let path = server === "api" ? selectedComponent : selectedSSHComponent;
     if (type === "file") path = path.split("/").slice(0, -1).join("/");
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/newfolder", {
+      .post(URL + "/" + server + "/newfolder", {
         folderName,
         path,
         server_type: connectionType,
@@ -304,7 +312,7 @@ export default function useApi() {
     fileData: string
   ) => {
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/editfile", {
+      .post(URL + "/" + server + "/editfile", {
         filePath,
         fileData,
         server_type: connectionType,
@@ -327,7 +335,7 @@ export default function useApi() {
   ) => {
     const dest = sourceFile.split("/").slice(0, -1).join("/") + "/" + fileName;
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/rename", {
+      .post(URL + "/" + server + "/rename", {
         fileName,
         sourceFile,
         server_type: connectionType,
@@ -360,7 +368,7 @@ export default function useApi() {
     destPath: string
   ) => {
     axios
-      .post(process.env.REACT_APP_SERVER_URL + "/" + server + "/move", {
+      .post(URL + "/" + server + "/move", {
         sourceFile,
         destPath,
         server_type: connectionType,
