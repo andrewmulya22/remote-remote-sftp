@@ -4,6 +4,12 @@ interface IProgress {
   id: number;
   name: string;
   progress: number;
+  errorCount: number;
+}
+
+interface IError {
+  id: number;
+  counter: number;
 }
 
 //SSH FS data

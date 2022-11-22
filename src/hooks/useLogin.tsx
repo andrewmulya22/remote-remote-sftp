@@ -70,13 +70,17 @@ export default function useLogin() {
     const hostname = /^\w+:\/\//i.test(host)
       ? host.match(/^\w+:\/\/([^\/]+)\/?$/i)![1]
       : host;
-    axios
-      .post(URL + "/ssh_login", {
+    axios({
+      method: "post",
+      url: URL + "/ssh_login",
+      timeout: 5000,
+      data: {
         server_type,
         host: hostname,
         username,
         password,
-      })
+      },
+    })
       .then((response) => {
         if (response.status === 200) {
           setConnectionType(server_type);

@@ -1,8 +1,7 @@
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import axios from "axios";
-import React from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { selectedComponentState } from "../atoms/apiServerState";
 import {
   connectionTypeState,
@@ -18,7 +17,7 @@ export default function useUploadDownload() {
   const selectedAPIFile = useRecoilValue(selectedComponentState);
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
   const setUploadQ = useSetRecoilState(uploadQState);
-  const setDownloadQ = useSetRecoilState(downloadQState);
+  const [downloadQ, setDownloadQ] = useRecoilState(downloadQState);
   const { reloadFiles } = useApi();
   //server type
   const connectionType = useRecoilValue(connectionTypeState);
@@ -30,10 +29,11 @@ export default function useUploadDownload() {
   ) => {
     if (!sourceFile && selectedAPIFile === "") return;
     let downloadDone = false;
+    let downloadSuccess = true;
     const downloadID = Math.floor(Math.random() * 100000);
     setDownloadQ((prevState) => [
       ...prevState,
-      { id: downloadID, name: "", progress: 0 },
+      { id: downloadID, name: "", progress: 0, errorCount: 0 },
     ]);
     axios
       .post(URL + "/sftpget", {
@@ -47,6 +47,7 @@ export default function useUploadDownload() {
       })
       .catch((err) => {
         downloadDone = true;
+        downloadSuccess = false;
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
@@ -64,30 +65,56 @@ export default function useUploadDownload() {
         })
         // add to download queue
         .then((response) => {
-          // if(response.status === 200){
-          const downloadingFile = Object.keys(response.data)[0];
-          //update download queue
-          setDownloadQ((prevState) =>
-            prevState.map((state) => {
-              if (state.id === downloadID)
-                return {
-                  ...state,
-                  name: downloadingFile,
-                  progress: parseInt(response.data[downloadingFile]),
-                };
-              return state;
-            })
-          );
-          // }
+          return new Promise((resolve, reject) => {
+            if (response.status === 200) {
+              const downloadingFile = Object.keys(response.data)[0];
+              //update download queue
+              setDownloadQ((prevState) =>
+                prevState.map((state) => {
+                  if (state.id === downloadID)
+                    return {
+                      ...state,
+                      name: downloadingFile,
+                      progress: parseInt(response.data[downloadingFile]),
+                      errorCount: 0,
+                    };
+                  return state;
+                })
+              );
+            }
+            //count how many times error is returned
+            else if (response.status === 204) {
+              setDownloadQ((prevState) =>
+                prevState.map((state) => {
+                  if (state.id === downloadID) {
+                    if (state.errorCount > 5)
+                      reject({
+                        response: {
+                          status: 500,
+                          data: "Internal Server Errror : Download failed",
+                        },
+                      });
+                    return {
+                      ...state,
+                      errorCount: state.errorCount + 1,
+                    };
+                  }
+                  return state;
+                })
+              );
+            }
+          });
         })
-        .catch((err) =>
+        .catch((err) => {
+          downloadDone = true;
+          downloadSuccess = false;
           showNotification({
             title: `Error ${err.response.status}`,
             message: err.response.data,
             color: "red",
             icon: <IconX />,
-          })
-        );
+          });
+        });
     };
     const progressInterval = setInterval(() => {
       getProgress();
@@ -105,7 +132,7 @@ export default function useUploadDownload() {
         setDownloadQ((prevState) =>
           prevState.filter((state) => state.id !== downloadID)
         );
-        reloadFiles("api");
+        if (downloadSuccess) reloadFiles("api");
       }
     }, 500);
   };
@@ -117,23 +144,28 @@ export default function useUploadDownload() {
   ) => {
     if (!sourceFile && selectedSSHFile === "") return;
     let uploadDone = false;
+    let uploadSuccess = true;
     const uploadID = Math.floor(Math.random() * 100000);
     setUploadQ((prevState) => [
       ...prevState,
-      { id: uploadID, name: "", progress: 0 },
+      { id: uploadID, name: "", progress: 0, errorCount: 0 },
     ]);
-    axios
-      .post(URL + "/sftpput", {
+    axios({
+      method: "post",
+      url: URL + "/sftpput",
+      data: {
         uploadID,
         sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
         destFile: destFile === null ? selectedSSHFile : destFile,
         server_type: connectionType,
-      })
+      },
+    })
       .then(() => {
         uploadDone = true;
       })
       .catch((err) => {
         uploadDone = true;
+        uploadSuccess = false;
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
@@ -151,28 +183,54 @@ export default function useUploadDownload() {
         })
         // add to download queue
         .then((response) => {
-          const uploadingFile = Object.keys(response.data)[0];
-          //update download queue
-          setUploadQ((prevState) =>
-            prevState.map((state) => {
-              if (state.id === uploadID)
-                return {
-                  ...state,
-                  name: uploadingFile,
-                  progress: parseInt(response.data[uploadingFile]),
-                };
-              return state;
-            })
-          );
+          return new Promise((resolve, reject) => {
+            if (response.status === 200) {
+              const uploadingFile = Object.keys(response.data)[0];
+              //update download queue
+              setUploadQ((prevState) =>
+                prevState.map((state) => {
+                  if (state.id === uploadID)
+                    return {
+                      ...state,
+                      name: uploadingFile,
+                      progress: parseInt(response.data[uploadingFile]),
+                      errorCount: 0,
+                    };
+                  return state;
+                })
+              );
+            } else if (response.status === 204) {
+              setUploadQ((prevState) =>
+                prevState.map((state) => {
+                  if (state.id === uploadID) {
+                    if (state.errorCount > 5)
+                      reject({
+                        response: {
+                          status: 500,
+                          data: "Internal Server Errror : Upload failed",
+                        },
+                      });
+                    return {
+                      ...state,
+                      errorCount: state.errorCount + 1,
+                    };
+                  }
+                  return state;
+                })
+              );
+            }
+          });
         })
-        .catch((err) =>
+        .catch((err) => {
+          uploadDone = true;
+          uploadSuccess = false;
           showNotification({
             title: `Error ${err.response.status}`,
             message: err.response.data,
             color: "red",
             icon: <IconX />,
-          })
-        );
+          });
+        });
     };
     const progressInterval = setInterval(() => {
       getProgress();
@@ -190,7 +248,9 @@ export default function useUploadDownload() {
         setUploadQ((prevState) =>
           prevState.filter((state) => state.id !== uploadID)
         );
-        reloadFiles("ssh");
+        if (uploadSuccess) {
+          reloadFiles("ssh");
+        }
       }
     }, 500);
   };

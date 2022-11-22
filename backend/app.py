@@ -29,7 +29,6 @@ default_path_ssh = '/'
 
 @app.route('/ssh_login', methods=['POST'])
 def ssh_login():
-    print("test")
     global client, sftp, host, username, password, ftp_host
     try:
         client.close() or ftp_host.close()
@@ -477,16 +476,17 @@ def sftpget():
             return getting_files[f"{downloadID}"]
         except Exception as e:
             return f"{e}", 204
-    if request.method == "DELETE":
+    elif request.method == "DELETE":
         downloadID = request.args.get('downloadID')
         try:
-            getting_files.pop(f"{downloadID}")
-            if request.args.get('server_type') == "ftp":
+            if getting_files[f"{downloadID}"]:
+                getting_files.pop(f"{downloadID}")
+            if request.args.get('server_type') == "ftp" and getting_files_byte[f"{downloadID}"]:
                 getting_files_byte.pop(f"{downloadID}")
             return "OK"
         except Exception as e:
             return f"{e}", 500
-    if request.method == "POST":
+    elif request.method == "POST":
         content = request.get_json()
         # destination folder
         destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
@@ -513,11 +513,8 @@ def downloadHandler(src, dest, downloadID, server_type):
         if not os.path.exists(newfolder):
             os.mkdir(newfolder)
         for x in (sftp.listdir(src) if server_type == "sftp" else ftp_host.listdir(src)):
-            try:
-                downloadHandler(os.path.join(src, x), newfolder,
-                                downloadID, server_type)
-            except:
-                pass
+            downloadHandler(os.path.join(src, x), newfolder,
+                            downloadID, server_type)
     # if not a directory
     else:
         if server_type == "sftp":
@@ -542,16 +539,17 @@ def sftpput():
             return putting_files[f"{uploadID}"]
         except Exception as e:
             return f"{e}", 204
-    if request.method == "DELETE":
+    elif request.method == "DELETE":
         uploadID = request.args.get('uploadID')
         try:
-            putting_files.pop(f"{uploadID}")
-            if request.args.get('server_type') == "ftp":
+            if putting_files[f"{uploadID}"]:
+                putting_files.pop(f"{uploadID}")
+            if request.args.get('server_type') == "ftp" and putting_files[f"{uploadID}"]:
                 putting_files_byte.pop(f"{uploadID}")
             return "OK"
         except Exception as e:
             return f"{e}", 500
-    if request.method == "POST":
+    elif request.method == "POST":
         content = request.get_json()
         server_type = content['server_type']
         destination_folder = None
@@ -584,17 +582,12 @@ def uploadHandler(src, dest, uploadID, server_type):
     if os.path.isdir(src):
         # create dir in ssh server
         newfolder = os.path.join(dest, filename)
-        try:
-            sftp.mkdir(newfolder) if server_type == "sftp" else ftp_host.mkdir(
-                newfolder)
-        except:
-            pass
+        sftp.mkdir(newfolder) if server_type == "sftp" else ftp_host.mkdir(
+            newfolder)
         for x in os.listdir(src):
-            try:
-                uploadHandler(os.path.join(src, x), newfolder,
-                              uploadID, server_type)
-            except:
-                pass
+            # try:
+            uploadHandler(os.path.join(src, x), newfolder,
+                          uploadID, server_type)
     # if not a directory
     else:
         if server_type == "sftp":

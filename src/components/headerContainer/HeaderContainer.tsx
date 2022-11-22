@@ -142,7 +142,7 @@ const HeaderContainer = () => {
         className={classes.siteContainer}
       >
         <Group position="center">
-          <Text>APIサイト</Text>
+          <Text>APIディレクトリ</Text>
           <Input
             size="xs"
             className={classes.siteInputStyle}
@@ -152,7 +152,7 @@ const HeaderContainer = () => {
           {fetching ? <Loader size="sm" /> : <></>}
         </Group>
         <Group position="center">
-          <Text>{connectionType.toUpperCase()}サイト</Text>
+          <Text>{connectionType.toUpperCase()}ディレクトリ</Text>
           <Input
             size="xs"
             className={classes.siteInputStyle}
