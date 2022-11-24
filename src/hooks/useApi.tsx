@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect } from "react";
+import React from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   fetchingState,
@@ -186,12 +186,21 @@ export default function useApi() {
   const reloadFiles = (
     server: "ssh" | "api" | "",
     filesExc: { type: string; name: string[] } = { type: "", name: [] }
+    // updatedFolders: string[] = []
   ) => {
     const containerId = document.getElementById(
       server === "api" ? "left-container" : "right-container"
     )!;
     const loc = containerId.scrollTop;
     let folders = server === "api" ? [...folderLists] : [...SSHfolderLists];
+    // let folders = updatedFolders.length
+    //   ? updatedFolders
+    //   : server === "api"
+    //   ? [...folderLists]
+    //   : [...SSHfolderLists];
+    folders = folders.slice().sort((a, b) => a.length - b.length);
+    // console.log(filesSt);
+    // console.log(updatedFolders);
     // if a folder is deleted, remove from opened folders array
     if (filesExc.name.length) {
       if (

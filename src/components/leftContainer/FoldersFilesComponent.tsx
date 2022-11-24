@@ -4,7 +4,6 @@ import {
   IconChevronRight,
   IconFile,
   IconFolder,
-  IconSlice,
 } from "@tabler/icons";
 import React, { useEffect, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -38,7 +37,7 @@ const FoldersFilesComponent = ({
   count: number;
 }) => {
   const { classes } = useStyle();
-  const { getChildren, renameFile, moveFile } = useApi();
+  const { getChildren, renameFile, moveFile, reloadFiles } = useApi();
   const { downloadFile } = useUploadDownload();
   const [folderLists, setFolderLists] = useRecoilState(folderListsState);
   const setSelectedFolder = useSetRecoilState(selectedFolderState);
@@ -71,11 +70,16 @@ const FoldersFilesComponent = ({
       );
       setValue((prevValue) => !prevValue);
     } else {
-      //get children folder
-      getChildren("api", files.path).then(() => {
+      if (folderLists.find((folder) => folder.startsWith(files.path))) {
         setFolderLists((prevLists) => [...prevLists, files.path]);
         setValue((prevValue) => !prevValue);
-      });
+      }
+      //get children folder
+      else
+        getChildren("api", files.path).then(() => {
+          setFolderLists((prevLists) => [...prevLists, files.path]);
+          setValue((prevValue) => !prevValue);
+        });
     }
   };
 

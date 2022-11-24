@@ -72,11 +72,16 @@ const FoldersFilesRightComponent = ({
       );
       setValue((prevValue) => !prevValue);
     } else {
-      //get children folder
-      getChildren("ssh", files.path).then(() => {
+      if (folderLists.find((folder) => folder.startsWith(files.path))) {
         setFolderLists((prevLists) => [...prevLists, files.path]);
         setValue((prevValue) => !prevValue);
-      });
+      }
+      //get children folder
+      else
+        getChildren("ssh", files.path).then(() => {
+          setFolderLists((prevLists) => [...prevLists, files.path]);
+          setValue((prevValue) => !prevValue);
+        });
     }
   };
 
