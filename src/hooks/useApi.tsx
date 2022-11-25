@@ -146,7 +146,8 @@ export default function useApi() {
           resolve("Success");
         })
         .catch((err) => {
-          reject(err.response.data);
+          server === "api" ? setFetching(false) : setFetchingSSH(false);
+          // reject(err.response.data);
           showNotification({
             title: `Error ${err.response.status}`,
             message: err.response.data,

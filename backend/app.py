@@ -8,11 +8,11 @@ from stat import S_ISDIR, S_ISREG
 import functools
 import shutil
 
-
 app = Flask(__name__)
 CORS(app)
 
-## CHANGE THIS ##
+login_state = False
+
 host = None
 username = None
 password = None
@@ -25,6 +25,28 @@ sftp = None
 default_path_api = '/'
 # default_path_api = '/Users/andrewmulya/Downloads'
 default_path_ssh = '/'
+
+# WRAPPER
+
+
+def login_required(f):
+    @functools.wraps(f)
+    def wrapper(*args, **kwargs):
+        if login_state:
+            return f(*args, **kwargs)
+        return "Error", 404
+    return wrapper
+
+
+# LOGIN ROUTE
+
+@app.route('/api_login', methods=['POST'])
+def api_login():
+    global login_state
+    content = request.get_json()
+    if content['username'] and content['password']:
+        login_state = True
+    return "OK", 200
 
 
 @app.route('/ssh_login', methods=['POST'])
@@ -51,6 +73,7 @@ def ssh_login():
             ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
                 encoding="UTF-8"))
             ftp_host.use_list_a_option = True
+            ftp_host.keep_alive()
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -106,7 +129,7 @@ def path_to_dict_ftp(path):
     try:
         d['modified'] = ftp_host.path.getmtime(path)
     except:
-        d['modified'] = ""
+        d['modified'] = None
     if ftp_host.path.isdir(path):
         d['type'] = "folder"
         d['size'] = 0
@@ -544,10 +567,11 @@ def sftpput():
         try:
             if putting_files[f"{uploadID}"]:
                 putting_files.pop(f"{uploadID}")
-            if request.args.get('server_type') == "ftp" and putting_files[f"{uploadID}"]:
+            if request.args.get('server_type') == "ftp" and putting_files_byte[f"{uploadID}"]:
                 putting_files_byte.pop(f"{uploadID}")
             return "OK"
         except Exception as e:
+            print(e)
             return f"{e}", 500
     elif request.method == "POST":
         content = request.get_json()

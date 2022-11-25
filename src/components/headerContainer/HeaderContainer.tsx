@@ -81,12 +81,17 @@ const HeaderContainer = () => {
         <form onSubmit={(e) => api_login(e)}>
           <Group position="center">
             <Badge size="lg">APIサーバ</Badge>
-            <Input placeholder="Host or Port Number" ref={APIHOST} />
-            {/* <Input placeholder="Username" />
+            <Input
+              placeholder="Host or Port Number"
+              ref={APIHOST}
+              style={{ maxWidth: "8vw" }}
+            />
+            <Input placeholder="Username" style={{ maxWidth: "8vw" }} />
             <PasswordInput
               placeholder="Password"
               className={classes.passwordInputStyle}
-            /> */}
+              style={{ maxWidth: "8vw" }}
+            />
             <Button type="submit" value="Submit">
               接続
             </Button>

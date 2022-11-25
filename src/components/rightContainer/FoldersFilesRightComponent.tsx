@@ -35,6 +35,7 @@ const FoldersFilesRightComponent = ({
   files: IChildren;
   count: number;
 }) => {
+  console.log(files.name, files.modified);
   const { classes } = useStyle();
   const { getChildren, renameFile, moveFile } = useApi();
   const { uploadFile } = useUploadDownload();
@@ -206,7 +207,9 @@ const FoldersFilesRightComponent = ({
         files.children ? (
           files.children
             .slice()
-            .sort((a, b) => b.type.localeCompare(a.type))
+            .sort(
+              (a, b) => b.type.localeCompare(a.type) || b.modified - a.modified
+            )
             .map((file) => (
               <FoldersFilesRightComponent
                 key={file.path}

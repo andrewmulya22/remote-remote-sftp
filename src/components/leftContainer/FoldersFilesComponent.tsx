@@ -110,9 +110,8 @@ const FoldersFilesComponent = ({
       sourcefile.split("/").slice(0, -1).join("/") !== files.path
     )
       moveFile("api", sourcefile, files.path);
-    if (source === "ssh" && files.type === "folder") {
+    if (source === "ssh" && files.type === "folder")
       downloadFile(sourcefile, files.path);
-    }
   };
 
   //add scroll back when context menu is off
@@ -207,7 +206,9 @@ const FoldersFilesComponent = ({
         files.children ? (
           files.children
             .slice()
-            .sort((a, b) => b.type.localeCompare(a.type))
+            .sort(
+              (a, b) => b.type.localeCompare(a.type) || b.modified - a.modified
+            )
             .map((file) => (
               <FoldersFilesComponent
                 key={file.path}
