@@ -5,6 +5,7 @@ interface IProgress {
   name: string;
   progress: number;
   errorCount: number;
+  controller: AbortController;
 }
 
 interface IError {

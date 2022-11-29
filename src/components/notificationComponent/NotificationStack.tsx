@@ -12,17 +12,19 @@ export default function NotificationStack() {
       {[...downloadQ].map((download) => (
         <NotificationComponent
           key={download.id}
+          id={download.id}
           type="download"
           name={download.name}
           progress={download.progress}
         />
       ))}
-      {[...uploadQ].map((download) => (
+      {[...uploadQ].map((upload) => (
         <NotificationComponent
-          key={download.id}
-          type="download"
-          name={download.name}
-          progress={download.progress}
+          key={upload.id}
+          id={upload.id}
+          type="upload"
+          name={upload.name}
+          progress={upload.progress}
         />
       ))}
     </div>

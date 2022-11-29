@@ -1,7 +1,7 @@
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import axios from "axios";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../atoms/apiServerState";
 import {
   connectionTypeState,
@@ -16,7 +16,7 @@ export default function useUploadDownload() {
   //State management
   const selectedAPIFile = useRecoilValue(selectedComponentState);
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
-  const setUploadQ = useSetRecoilState(uploadQState);
+  const [uploadQ, setUploadQ] = useRecoilState(uploadQState);
   const [downloadQ, setDownloadQ] = useRecoilState(downloadQState);
   const { reloadFiles } = useApi();
   //server type
@@ -31,29 +31,54 @@ export default function useUploadDownload() {
     let downloadDone = false;
     let downloadSuccess = true;
     const downloadID = Math.floor(Math.random() * 100000);
+    //controller
+    const controller = new AbortController();
+    //initialize download state
     setDownloadQ((prevState) => [
       ...prevState,
-      { id: downloadID, name: "", progress: 0, errorCount: 0 },
+      {
+        id: downloadID,
+        name: "",
+        progress: 0,
+        errorCount: 0,
+        controller: controller,
+      },
     ]);
     axios
-      .post(URL + "/sftpget", {
-        downloadID,
-        sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
-        destFile: destFile === null ? selectedAPIFile : destFile,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/sftpget",
+        {
+          downloadID,
+          sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
+          destFile: destFile === null ? selectedAPIFile : destFile,
+          server_type: connectionType,
+        },
+        {
+          signal: controller.signal,
+        }
+      )
       .then(() => {
         downloadDone = true;
       })
       .catch((err) => {
         downloadDone = true;
         downloadSuccess = false;
-        showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
-          color: "red",
-          icon: <IconX />,
-        });
+        if (err.response)
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          });
+        if (err.message === "canceled") {
+          showNotification({
+            title: "CANCELED",
+            message: "Download canceled",
+            color: "red",
+            icon: <IconX />,
+          });
+          reloadFiles("api");
+        }
       });
     const getProgress = () => {
       axios
@@ -108,12 +133,13 @@ export default function useUploadDownload() {
         .catch((err) => {
           downloadDone = true;
           downloadSuccess = false;
-          showNotification({
-            title: `Error ${err.response.status}`,
-            message: err.response.data,
-            color: "red",
-            icon: <IconX />,
-          });
+          if (err.response)
+            showNotification({
+              title: `Error ${err.response.status}`,
+              message: err.response.data,
+              color: "red",
+              icon: <IconX />,
+            });
         });
     };
     const progressInterval = setInterval(() => {
@@ -146,32 +172,62 @@ export default function useUploadDownload() {
     let uploadDone = false;
     let uploadSuccess = true;
     const uploadID = Math.floor(Math.random() * 100000);
+    //controller
+    const controller = new AbortController();
+    //http Agent
+    // const httpAgent = new http.Agent({ keepAlive: true });
+    // const httpsAgent = new https.Agent({ keepAlive: true });
     setUploadQ((prevState) => [
       ...prevState,
-      { id: uploadID, name: "", progress: 0, errorCount: 0 },
-    ]);
-    axios({
-      method: "post",
-      url: URL + "/sftpput",
-      data: {
-        uploadID,
-        sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
-        destFile: destFile === null ? selectedSSHFile : destFile,
-        server_type: connectionType,
+      {
+        id: uploadID,
+        name: "",
+        progress: 0,
+        errorCount: 0,
+        controller: controller,
       },
-    })
+    ]);
+    axios
+      .post(
+        URL + "/sftpput",
+        {
+          uploadID,
+          sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
+          destFile: destFile === null ? selectedSSHFile : destFile,
+          server_type: connectionType,
+        },
+        {
+          signal: controller.signal,
+        }
+      )
       .then(() => {
         uploadDone = true;
       })
       .catch((err) => {
         uploadDone = true;
         uploadSuccess = false;
-        showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
-          color: "red",
-          icon: <IconX />,
-        });
+        if (err.response)
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          });
+        if (err.message === "canceled") {
+          if (connectionType === "sftp")
+            axios.get(URL + "/abortOperations", {
+              params: {
+                uploadID,
+              },
+            });
+          showNotification({
+            title: "CANCELED",
+            message: "Upload canceled",
+            color: "red",
+            icon: <IconX />,
+          });
+          // reloadFiles("ssh");
+        }
       });
     const getProgress = () => {
       axios
@@ -232,18 +288,12 @@ export default function useUploadDownload() {
           });
         });
     };
+    let i = 0;
     const progressInterval = setInterval(() => {
       getProgress();
       // if download has reached 100%
       if (uploadDone) {
         clearInterval(progressInterval);
-        // clear download array
-        axios.delete(URL + "/sftpput", {
-          params: {
-            uploadID,
-            server_type: connectionType,
-          },
-        });
         //remove from download queue
         setUploadQ((prevState) =>
           prevState.filter((state) => state.id !== uploadID)
@@ -252,7 +302,24 @@ export default function useUploadDownload() {
           reloadFiles("ssh");
         }
       }
+      i++;
     }, 500);
   };
-  return { downloadFile, uploadFile };
+
+  const abortTransfer = (type: "download" | "upload", id: number) => {
+    if (type === "download") {
+      const downloadController = downloadQ.find(
+        (controller) => controller.id === id
+      );
+      downloadController?.controller.abort();
+    }
+    if (type === "upload") {
+      const uploadController = uploadQ.find(
+        (controller) => controller.id === id
+      );
+      uploadController?.controller.abort();
+    }
+  };
+
+  return { downloadFile, uploadFile, abortTransfer };
 }

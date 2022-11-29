@@ -7,6 +7,8 @@ import ftputil
 from stat import S_ISDIR, S_ISREG
 import functools
 import shutil
+import logging
+from thread_with_trace import thread_with_trace
 
 app = Flask(__name__)
 CORS(app)
@@ -18,13 +20,17 @@ username = None
 password = None
 ftp_host = None
 
-client = paramiko.client.SSHClient()
+client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 sftp = None
 
 default_path_api = '/'
 # default_path_api = '/Users/andrewmulya/Downloads'
 default_path_ssh = '/'
+
+paramiko.SFTPFile.MAX_REQUEST_SIZE = 1024
+logging.basicConfig()
+logging.getLogger("paramiko").setLevel(logging.INFO)
 
 # WRAPPER
 
@@ -44,12 +50,14 @@ def login_required(f):
 def api_login():
     global login_state
     content = request.get_json()
-    if content['username'] and content['password']:
+    # if content['username'] and content['password']:
+    if content['host']:
         login_state = True
     return "OK", 200
 
 
 @app.route('/ssh_login', methods=['POST'])
+# @login_required
 def ssh_login():
     global client, sftp, host, username, password, ftp_host
     try:
@@ -73,7 +81,7 @@ def ssh_login():
             ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
                 encoding="UTF-8"))
             ftp_host.use_list_a_option = True
-            ftp_host.keep_alive()
+            # ftp_host.keep_alive()
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -141,31 +149,6 @@ def path_to_dict_ftp(path):
         except:
             d['size'] = 0
     return d
-
-# abort operation (download/upload)
-
-
-def ssh_abort(server_type):
-    global client, sftp, host, username, password, ftp_host
-    try:
-        client.close() or ftp_host.close()
-    except:
-        pass
-    if server_type == "sftp":
-        try:
-            # client.connect(host, username=username, password=password)
-            sftp = client.open_sftp()
-            return "OK"
-        except Exception as e:
-            return f"{e}", 500
-    elif server_type == "ftp":
-        try:
-            ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
-                encoding="UTF-8"))
-            ftp_host.use_list_a_option = True
-            return "OK"
-        except Exception as e:
-            return f"{e}", 500
 
 
 # FETCH CHILDREN DATA #
@@ -553,9 +536,13 @@ def downloadHandler(src, dest, downloadID, server_type):
                 dest, filename), callback_downloadID)
 
 
+threads = {}
+
+
 @app.route('/sftpput', methods=['GET', 'DELETE', 'POST'])
 def sftpput():
     global putting_files, sftp, ftp_host, putting_files_byte
+    global threads
     if request.method == "GET":
         uploadID = request.args.get('uploadID')
         try:
@@ -571,7 +558,6 @@ def sftpput():
                 putting_files_byte.pop(f"{uploadID}")
             return "OK"
         except Exception as e:
-            print(e)
             return f"{e}", 500
     elif request.method == "POST":
         content = request.get_json()
@@ -591,10 +577,15 @@ def sftpput():
             destination_folder = os.path.dirname(content['destFile']) if not ftp_host.path.isdir(
                 content['destFile']) else content['destFile']
         try:
-            putting_files_byte[f"{content['uploadID']}"] = {}
-            uploadHandler(content['sourceFile'],
-                          destination_folder, content['uploadID'], server_type)
-            return "OK", 200
+            while True:
+                putting_files_byte[f"{content['uploadID']}"] = {}
+                threads[f"{content['uploadID']}"] = thread_with_trace(target=uploadHandler, args=(content['sourceFile'],
+                                                                                                  destination_folder, content['uploadID'], server_type))
+                threads[f"{content['uploadID']}"].start()
+                # uploadHandler(content['sourceFile'],
+                #               destination_folder, content['uploadID'], server_type)
+                threads[f"{content['uploadID']}"].join()
+                return "OK", 200
         except Exception as e:
             return f"{e}", 500
 
@@ -625,6 +616,20 @@ def uploadHandler(src, dest, uploadID, server_type):
                 byte_transferred_ftp, "upload", uploadID, filename, os.path.getsize(src))
             ftp_host.upload(src, os.path.join(
                 dest, filename), callback_uploadID)
+
+
+@app.route('/abortOperations', methods=['GET', 'POST'])
+def abortOperations():
+    if request.method == "GET":
+        global threads
+        uploadID = request.args.get('uploadID')
+        threads[f"{uploadID}"].kill()
+        return "OK", 200
+    else:
+        content = request.get_json()
+        dest = content['destFile']
+        deleteHandler(dest, "sftp")
+        return "OK", 200
 
 
 if __name__ == '__main__':

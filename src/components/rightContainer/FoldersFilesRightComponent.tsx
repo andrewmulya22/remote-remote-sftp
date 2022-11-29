@@ -35,7 +35,6 @@ const FoldersFilesRightComponent = ({
   files: IChildren;
   count: number;
 }) => {
-  console.log(files.name, files.modified);
   const { classes } = useStyle();
   const { getChildren, renameFile, moveFile } = useApi();
   const { uploadFile } = useUploadDownload();

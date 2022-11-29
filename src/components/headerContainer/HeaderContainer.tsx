@@ -34,6 +34,8 @@ const HeaderContainer = () => {
 
   //ssh ref
   const APIHOST = useRef<HTMLInputElement>(null);
+  const APIUSERNAME = useRef<HTMLInputElement>(null);
+  const APIPASSWORD = useRef<HTMLInputElement>(null);
   const SERVERSELECT = useRef<HTMLSelectElement>(null);
   const SSHHOST = useRef<HTMLInputElement>(null);
   const SSHUSERNAME = useRef<HTMLInputElement>(null);
@@ -50,7 +52,13 @@ const HeaderContainer = () => {
       hostname = hostname.replace(/\/$/, "");
       if (/^\d+/i.test(hostname)) hostname = "http://localhost:" + hostname;
       else if (!/^https?:\/\//i.test(hostname)) hostname = "http://" + hostname;
-      api_login_handler(hostname);
+      if (APIUSERNAME.current && APIPASSWORD.current)
+        api_login_handler(
+          hostname,
+          APIUSERNAME.current.value,
+          APIPASSWORD.current.value
+        );
+      else api_login_handler(hostname);
     }
   };
 
@@ -86,10 +94,15 @@ const HeaderContainer = () => {
               ref={APIHOST}
               style={{ maxWidth: "8vw" }}
             />
-            <Input placeholder="Username" style={{ maxWidth: "8vw" }} />
+            <Input
+              placeholder="Username"
+              style={{ maxWidth: "8vw" }}
+              ref={APIUSERNAME}
+            />
             <PasswordInput
               placeholder="Password"
               className={classes.passwordInputStyle}
+              ref={APIPASSWORD}
               style={{ maxWidth: "8vw" }}
             />
             <Button type="submit" value="Submit">

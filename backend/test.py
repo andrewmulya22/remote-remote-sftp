@@ -3,18 +3,22 @@ import os
 import functools
 my_session_factory = ftputil.session.session_factory(
     encoding="UTF-8")
-ftp_host = ftputil.FTPHost("invoice.cocona.jp", "u9950005_0003",
-                           "6rn93mWc", session_factory=my_session_factory)
+# ftp_host = ftputil.FTPHost("invoice.cocona.jp", "u9950005_0003",
+#                            "6rn93mWc", session_factory=my_session_factory)
+ftp_host = ftputil.FTPHost("169.254.43.228", "pi",
+                           "net%1528", session_factory=my_session_factory)
 
-bytes = 0
+ftp_host.put("/home/pi/Downloads/BeginnersGuide-4thEd-Eng_v2.pdf",
+                  "/Users/andrewmulya/Downloads/sades.pdf")
+# bytes = 0
 
-print(ftp_host.path.getsize("/"))
+# print(ftp_host.path.getsize("/"))
 
 
-def callbackfunc(filesize, chunk):
-    global bytes
-    bytes = bytes + len(chunk)
-    print(f"{bytes/filesize*100}%")
+# def callbackfunc(filesize, chunk):
+#     global bytes
+#     bytes = bytes + len(chunk)
+#     print(f"{bytes/filesize*100}%")
 
 
 # filesize = ftp_host.path.getsize(

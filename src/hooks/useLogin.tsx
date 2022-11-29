@@ -33,18 +33,44 @@ export default function useLogin() {
   const setSelectedSSHFolder = useSetRecoilState(selectedSSHFolderState);
   const [URL, setURL] = useRecoilState(URLState);
 
-  const api_login_handler = (host: string) => {
+  const api_login_handler = (
+    host: string,
+    username: string = "",
+    password: string = ""
+  ) => {
     if (host !== URL) {
-      // reset API server files
-      setFile([]);
-      setURL(host);
-      setFolderLists([]);
-      setSelectedFolder("");
-      //reset SSH states
-      setSSHFile([]);
-      setSSHAuth(false);
-      setSSHFolderLists([]);
-      setSelectedSSHFolder("");
+      axios({
+        method: "post",
+        url: host + "/api_login",
+        timeout: 5000,
+        data: {
+          host,
+          username,
+          password,
+        },
+      })
+        .then((response) => {
+          if (response.status === 200) {
+            // reset API server files
+            setFile([]);
+            setURL(host);
+            setFolderLists([]);
+            setSelectedFolder("");
+            //reset SSH states
+            setSSHFile([]);
+            setSSHAuth(false);
+            setSSHFolderLists([]);
+            setSelectedSSHFolder("");
+          }
+        })
+        .catch((err) => {
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          });
+        });
     }
   };
 
