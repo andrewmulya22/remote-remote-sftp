@@ -160,7 +160,7 @@ export default function useUploadDownload() {
         );
         if (downloadSuccess) reloadFiles("api");
       }
-    }, 500);
+    }, 1000);
   };
 
   // UPLOAD FILE
@@ -174,9 +174,6 @@ export default function useUploadDownload() {
     const uploadID = Math.floor(Math.random() * 100000);
     //controller
     const controller = new AbortController();
-    //http Agent
-    // const httpAgent = new http.Agent({ keepAlive: true });
-    // const httpsAgent = new https.Agent({ keepAlive: true });
     setUploadQ((prevState) => [
       ...prevState,
       {
@@ -226,7 +223,7 @@ export default function useUploadDownload() {
             color: "red",
             icon: <IconX />,
           });
-          // reloadFiles("ssh");
+          reloadFiles("ssh");
         }
       });
     const getProgress = () => {
@@ -288,7 +285,6 @@ export default function useUploadDownload() {
           });
         });
     };
-    let i = 0;
     const progressInterval = setInterval(() => {
       getProgress();
       // if download has reached 100%
@@ -302,8 +298,7 @@ export default function useUploadDownload() {
           reloadFiles("ssh");
         }
       }
-      i++;
-    }, 500);
+    }, 1000);
   };
 
   const abortTransfer = (type: "download" | "upload", id: number) => {

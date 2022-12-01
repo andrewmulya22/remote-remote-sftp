@@ -17,6 +17,7 @@ import {
 import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import { URLState } from "../atoms/URLState";
+import { propertiesDataState, propertiesModalState } from "../atoms/modalState";
 
 interface IChildren {
   type: string;
@@ -46,6 +47,10 @@ export default function useApi() {
   const [folderLists, setFolderLists] = useRecoilState(folderListsState);
   const [SSHfolderLists, setSSHFolderLists] =
     useRecoilState(SSHfolderListsState);
+
+  //properties Modal State
+  const setPropertiesModal = useSetRecoilState(propertiesModalState);
+  const setPropertiesData = useSetRecoilState(propertiesDataState);
 
   const connectionType = useRecoilValue(connectionTypeState);
 
@@ -412,6 +417,28 @@ export default function useApi() {
       );
   };
 
+  const getProperties = (server: "api" | "ssh" | "") => {
+    setPropertiesModal(true);
+    const sourceFile =
+      server === "api" ? selectedComponent : selectedSSHComponent;
+    axios
+      .post(URL + "/" + server + "/properties", {
+        sourceFile,
+        server_type: connectionType,
+      })
+      .then((resp) =>
+        setPropertiesData({
+          name: resp.data.name,
+          size: resp.data.size,
+          mode: resp.data.mode,
+          uid: resp.data.uid,
+          gid: resp.data.gid,
+          mtime: resp.data.mtime,
+          atime: resp.data.atime,
+        })
+      );
+  };
+
   return {
     fetchApi,
     getChildren,
@@ -421,5 +448,6 @@ export default function useApi() {
     renameFile,
     moveFile,
     reloadFiles,
+    getProperties,
   };
 }

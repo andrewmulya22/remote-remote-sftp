@@ -1,19 +1,26 @@
 import ftputil
 import os
 import functools
-my_session_factory = ftputil.session.session_factory(
-    encoding="UTF-8")
-# ftp_host = ftputil.FTPHost("invoice.cocona.jp", "u9950005_0003",
-#                            "6rn93mWc", session_factory=my_session_factory)
-ftp_host = ftputil.FTPHost("169.254.43.228", "pi",
-                           "net%1528", session_factory=my_session_factory)
+import paramiko
 
-ftp_host.put("/home/pi/Downloads/BeginnersGuide-4thEd-Eng_v2.pdf",
-                  "/Users/andrewmulya/Downloads/sades.pdf")
+paramiko.util.log_to_file('./paramiko.log')
+transport = paramiko.Transport(("169.254.43.228", 22))
+transport.connect(username="pi", password="net%1528")
+
+try:
+    sftp = paramiko.SFTPClient.from_transport(transport)
+    print("test")
+    print(sftp.stat("/"))
+    sftp.close()
+
+    sftp2 = paramiko.SFTPClient.from_transport(transport)
+    print(sftp2.stat('/'))
+    sftp2.close()
+except Exception as e:
+    print(e)
+
+
 # bytes = 0
-
-# print(ftp_host.path.getsize("/"))
-
 
 # def callbackfunc(filesize, chunk):
 #     global bytes

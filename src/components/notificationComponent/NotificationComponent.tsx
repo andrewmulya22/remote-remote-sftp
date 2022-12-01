@@ -19,7 +19,6 @@ export default function NotificationComponent({
   const { abortTransfer } = useUploadDownload();
   return (
     <Notification
-      loading
       color={type === "download" ? "blue" : "green"}
       title={type === "download" ? "DOWNLOAD" : "UPLOAD"}
       style={{

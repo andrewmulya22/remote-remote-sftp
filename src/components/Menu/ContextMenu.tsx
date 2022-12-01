@@ -27,7 +27,7 @@ const ContextMenu = ({ points, type, size, server }: Props) => {
   const setEditModal = useSetRecoilState(editModalState);
   const setRenameLeft = useSetRecoilState(renameStateLeft);
   const setRenameRight = useSetRecoilState(renameStateRight);
-  const { deleteFiles } = useApi();
+  const { deleteFiles, getProperties } = useApi();
   const { downloadFile, uploadFile } = useUploadDownload();
 
   let newYPoint = points.y;
@@ -81,6 +81,14 @@ const ContextMenu = ({ points, type, size, server }: Props) => {
         }
       >
         Rename
+      </li>
+      <li
+        className="menu__item"
+        onClick={() =>
+          server === "api" ? getProperties("api") : getProperties("ssh")
+        }
+      >
+        Properties
       </li>
     </ul>
   );

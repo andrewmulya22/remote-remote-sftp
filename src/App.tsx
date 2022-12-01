@@ -5,6 +5,7 @@ import HeaderContainer from "./components/headerContainer/HeaderContainer";
 import LeftContainer from "./components/leftContainer/LeftContainer";
 import EditModal from "./components/ModalComponent/EditModal";
 import NewFolderModal from "./components/ModalComponent/NewFolderModal";
+import PropertiesModal from "./components/ModalComponent/PropertiesModal";
 import NotificationStack from "./components/notificationComponent/NotificationStack";
 import RightContainer from "./components/rightContainer/RightContainer";
 
@@ -20,6 +21,7 @@ function App() {
       <RightContainer />
       <NewFolderModal />
       <EditModal />
+      <PropertiesModal />
       <NotificationStack />
     </div>
   );

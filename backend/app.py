@@ -4,33 +4,19 @@ import os
 import json
 import paramiko
 import ftputil
-from stat import S_ISDIR, S_ISREG
+import stat
 import functools
 import shutil
-import logging
-from thread_with_trace import thread_with_trace
-
 app = Flask(__name__)
 CORS(app)
 
+# paramiko.util.log_to_file('./paramiko.log')
 login_state = False
-
-host = None
-username = None
-password = None
 ftp_host = None
-
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-sftp = None
+sftp_host = None
 
 default_path_api = '/'
-# default_path_api = '/Users/andrewmulya/Downloads'
 default_path_ssh = '/'
-
-paramiko.SFTPFile.MAX_REQUEST_SIZE = 1024
-logging.basicConfig()
-logging.getLogger("paramiko").setLevel(logging.INFO)
 
 # WRAPPER
 
@@ -50,7 +36,6 @@ def login_required(f):
 def api_login():
     global login_state
     content = request.get_json()
-    # if content['username'] and content['password']:
     if content['host']:
         login_state = True
     return "OK", 200
@@ -59,9 +44,9 @@ def api_login():
 @app.route('/ssh_login', methods=['POST'])
 # @login_required
 def ssh_login():
-    global client, sftp, host, username, password, ftp_host
+    global ftp_host, sftp_host
     try:
-        client.close() or ftp_host.close()
+        sftp_host.close() or ftp_host.close()
     except:
         pass
     content = request.get_json()
@@ -71,8 +56,8 @@ def ssh_login():
     password = content['password']
     if server_type == "sftp":
         try:
-            client.connect(host, username=username, password=password)
-            sftp = client.open_sftp()
+            sftp_host = paramiko.Transport((host, 22))
+            sftp_host.connect(username=username, password=password)
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -81,7 +66,7 @@ def ssh_login():
             ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
                 encoding="UTF-8"))
             ftp_host.use_list_a_option = True
-            # ftp_host.keep_alive()
+            ftp_host.keep_alive()
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -106,8 +91,7 @@ def path_to_dict(path):
     return d
 
 
-def path_to_dict_ssh(path):
-    global client, sftp
+def path_to_dict_ssh(path, sftp):
     if(path == "/" or path == ""):
         d = {'name': "/"}
     else:
@@ -116,7 +100,7 @@ def path_to_dict_ssh(path):
     # file data
     fileState = sftp.stat(path)
     d['modified'] = fileState.st_mtime
-    if S_ISDIR(fileState.st_mode):
+    if stat.S_ISDIR(fileState.st_mode):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
@@ -175,18 +159,20 @@ def api_children():
 
 @app.route('/ssh/children', methods=['POST'])
 def ssh_children():
-    global sftp, ftp_host
+    global sftp_host, ftp_host
     content = request.get_json()
     server_type = content['server_type']
     children = []
     try:
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
             for x in sftp.listdir(content['path']):
                 try:
                     children.append(path_to_dict_ssh(
-                        os.path.join(content['path'], x)))
+                        os.path.join(content['path'], x), sftp))
                 except Exception as e:
                     continue
+            sftp.close()
         elif server_type == "ftp":
             for x in ftp_host.listdir(content['path']):
                 try:
@@ -293,20 +279,40 @@ def editfile():
         return f"{e}", 500
 
 
+@app.route('/api/properties', methods=['POST'])
+def properties():
+    content = request.get_json()
+    try:
+        filestat = os.stat(content['sourceFile'])
+        d = {'name': os.path.basename(content['sourceFile'])}
+        d['size'] = filestat.st_size
+        d['mode'] = oct(filestat.st_mode)
+        d['uid'] = filestat.st_uid
+        d['gid'] = filestat.st_gid
+        d['mtime'] = filestat.st_mtime
+        d['atime'] = filestat.st_atime
+        return d, 200
+    except Exception as e:
+        return f"{e}", 500
+
 ##### SSH ROUTES #####
+
+
 @app.route('/ssh', methods=['GET'])
 def ssh():
-    global username, client, ftp_host
+    global sftp_host
     server_type = request.args.get('server_type')
     data = []
     try:
         if server_type == "sftp":
-            data = [path_to_dict_ssh(default_path_ssh)]
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
+            data = [path_to_dict_ssh(default_path_ssh, sftp)]
+            sftp.close()
         elif server_type == "ftp":
             try:
                 data = [path_to_dict_ftp("/")]
             except:
-                data = [path_to_dict_ftp("/home/" + username)]
+                data = [path_to_dict_ftp("/home/")]
         response = app.response_class(
             response=json.dumps(data),
             mimetype='application/json'
@@ -318,26 +324,31 @@ def ssh():
 
 @app.route('/ssh/delete', methods=['POST'])
 def ssh_delete():
+    global sftp_host
     content = request.get_json()
     try:
-        deleteHandler(content['files'], content['server_type'])
+        sftp = paramiko.SFTPClient.from_transport(
+            sftp_host) if content['server_type'] == "sftp" else None
+        deleteHandler(content['files'], content['server_type'], sftp)
+        if sftp is not None:
+            sftp.close()
         return "OK", 200
     except Exception as e:
         return f"{e}", 500
 
 
-def deleteHandler(path, server_type):
-    global sftp, ftp_host
-    dir_check = S_ISDIR(
-        sftp.stat(path).st_mode) if server_type == "sftp" else ftp_host.path.isdir(path)
+def deleteHandler(path, server_type, sftp):
+    global ftp_host
     if server_type == "sftp":
+        dir_check = stat.S_ISDIR(sftp.stat(path).st_mode)
         if dir_check:
             for x in sftp.listdir(path):
-                deleteHandler(os.path.join(path, x), server_type)
+                deleteHandler(os.path.join(path, x), server_type, sftp)
             sftp.rmdir(path)
         else:
             sftp.remove(path)
     elif server_type == "ftp":
+        dir_check = ftp_host.path.isdir(path)
         if dir_check:
             for x in ftp_host.listdir(path):
                 deleteHandler(os.path.join(path, x), server_type)
@@ -348,13 +359,15 @@ def deleteHandler(path, server_type):
 
 @app.route('/ssh/newfolder', methods=['POST'])
 def ssh_newfolder():
-    global client, sftp, ftp_host
+    global sftp_host, ftp_host
     content = request.get_json()
     server_type = content['server_type']
     folderName = os.path.join(content["path"], content["folderName"])
     try:
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
             sftp.mkdir(folderName)
+            sftp.close()
         elif server_type == "ftp":
             ftp_host.mkdir(folderName)
         return "OK"
@@ -364,7 +377,7 @@ def ssh_newfolder():
 
 @app.route('/ssh/rename', methods=['POST'])
 def ssh_rename():
-    global client, sftp
+    global sftp_host
     content = request.get_json()
     server_type = content['server_type']
     sourceFile = content["sourceFile"]
@@ -372,7 +385,9 @@ def ssh_rename():
         content["sourceFile"]), content["fileName"])
     try:
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
             sftp.rename(sourceFile, fileName)
+            sftp.close()
         elif server_type == "ftp":
             ftp_host.rename(sourceFile, fileName)
         return "OK"
@@ -382,6 +397,7 @@ def ssh_rename():
 
 @app.route('/ssh/move', methods=['POST'])
 def ssh_move():
+    global sftp_host
     content = request.get_json()
     server_type = content['server_type']
     sourceFile = content["sourceFile"]
@@ -389,7 +405,9 @@ def ssh_move():
     fileName = os.path.basename(sourceFile)
     try:
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
             sftp.rename(sourceFile, os.path.join(destPath, fileName))
+            sftp.close()
         elif server_type == "ftp":
             ftp_host.rename(sourceFile, os.path.join(destPath, fileName))
         return "OK"
@@ -402,15 +420,21 @@ def ssh_move():
 
 @app.route('/ssh/filedata', methods=['POST'])
 def ssh_filedata():
-    global client, ftp_host
+    global ftp_host, sftp_host
     content = request.get_json()
     server_type = content['server_type']
     try:
         if server_type == "sftp":
-            _, stdout, ___ = client.exec_command(
-                f"cat {content['filePath']}")
-            output = stdout.read().decode('utf-8')
-            return output, 200
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
+            f = sftp.open(content['filePath'], 'r')
+            filedata = f.read()
+            f.close()
+            sftp.close()
+            return filedata, 200
+            # _, stdout, ___ = client.exec_command(
+            #     f"cat {content['filePath']}")
+            # output = stdout.read().decode('utf-8')
+            # return output, 200
         elif server_type == "ftp":
             f = ftp_host.open(content['filePath'], 'r')
             filedata = f.read()
@@ -422,14 +446,16 @@ def ssh_filedata():
 
 @app.route('/ssh/editfile', methods=['POST'])
 def ssh_editfile():
-    global client, ftp_host
+    global ftp_host, sftp_host
     content = request.get_json()
     server_type = content['server_type']
     try:
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
             f = sftp.open(content['filePath'], 'w')
             f.write(content['fileData'])
             f.close()
+            sftp.close()
         elif server_type == "ftp":
             f = ftp_host.open(content['filePath'], 'w')
             f.write(content['fileData'])
@@ -439,12 +465,39 @@ def ssh_editfile():
         return f"{e}", 500
 
 
+@app.route('/ssh/properties', methods=['POST'])
+def ssh_properties():
+    global sftp_host, ftp_host
+    content = request.get_json()
+    try:
+        server_type = content['server_type']
+        sftp = paramiko.SFTPClient.from_transport(
+            sftp_host) if server_type == "sftp" else None
+        filestat = sftp.stat(content['sourceFile']) if server_type == "sftp" else ftp_host.stat(
+            content['sourceFile'])
+        if sftp is not None:
+            sftp.close()
+        d = {'name': os.path.basename(content['sourceFile'])}
+        d['size'] = filestat.st_size
+        d['mode'] = oct(filestat.st_mode)
+        d['uid'] = filestat.st_uid
+        d['gid'] = filestat.st_gid
+        d['mtime'] = filestat.st_mtime
+        d['atime'] = filestat.st_atime
+        return d, 200
+    except Exception as e:
+        print(e)
+        return f"{e}", 500
+
+
 # FILE TRANSFER
 getting_files = {}
 putting_files = {}
 
 getting_files_byte = {}
 putting_files_byte = {}
+
+upload_sftp_ids = {}
 
 
 def byte_transferred(type, transferID, filename, xfer, to_be_xfer):
@@ -475,7 +528,7 @@ def byte_transferred_ftp(type, transferID, filename, to_be_xfer, bytes):
 
 @app.route('/sftpget', methods=['GET', 'DELETE', 'POST'])
 def sftpget():
-    global getting_files, getting_files_byte
+    global getting_files, getting_files_byte, sftp_host
     if request.method == "GET":
         downloadID = request.args.get('downloadID')
         try:
@@ -498,19 +551,23 @@ def sftpget():
         destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
             content['destFile']) else content['destFile']
         try:
+            sftp = paramiko.SFTPClient.from_transport(
+                sftp_host) if content['server_type'] == "sftp" else None
             if content['server_type'] == "ftp":
                 getting_files_byte[f"{content['downloadID']}"] = {}
             downloadHandler(content['sourceFile'],
-                            destination_folder, content['downloadID'], content['server_type'])
+                            destination_folder, content['downloadID'], content['server_type'], sftp)
+            if sftp is not None:
+                sftp.close()
             return "OK", 200
         except Exception as e:
             return f"{e}", 500
 
 
-def downloadHandler(src, dest, downloadID, server_type):
-    global client, sftp, ftp_host, getting_files_byte
+def downloadHandler(src, dest, downloadID, server_type, sftp):
+    global ftp_host, getting_files_byte
     filename = os.path.basename(src)
-    dir_check = S_ISDIR(
+    dir_check = stat.S_ISDIR(
         sftp.stat(src).st_mode) if server_type == "sftp" else ftp_host.path.isdir(src)
     # if a directory
     if dir_check:
@@ -520,7 +577,7 @@ def downloadHandler(src, dest, downloadID, server_type):
             os.mkdir(newfolder)
         for x in (sftp.listdir(src) if server_type == "sftp" else ftp_host.listdir(src)):
             downloadHandler(os.path.join(src, x), newfolder,
-                            downloadID, server_type)
+                            downloadID, server_type, sftp)
     # if not a directory
     else:
         if server_type == "sftp":
@@ -536,13 +593,9 @@ def downloadHandler(src, dest, downloadID, server_type):
                 dest, filename), callback_downloadID)
 
 
-threads = {}
-
-
 @app.route('/sftpput', methods=['GET', 'DELETE', 'POST'])
 def sftpput():
-    global putting_files, sftp, ftp_host, putting_files_byte
-    global threads
+    global putting_files, sftp_host, ftp_host, putting_files_byte
     if request.method == "GET":
         uploadID = request.args.get('uploadID')
         try:
@@ -564,12 +617,18 @@ def sftpput():
         server_type = content['server_type']
         destination_folder = None
         if server_type == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
+            # print(sftp.get_channel().get_id())
+        if server_type == "sftp":
             try:
                 fileState = sftp.stat(content['destFile'])
+                # upload_sftp_ids[f"{content['uploadID']}"] = sftp.get_channel(
+                # ).get_id()
+                upload_sftp_ids[f"{content['uploadID']}"] = sftp
             except:
                 fileState = None
             # if not a directory
-            if fileState is None or not S_ISDIR(fileState.st_mode):
+            if fileState is None or not stat.S_ISDIR(fileState.st_mode):
                 destination_folder = os.path.dirname(content['destFile'])
             else:
                 destination_folder = content['destFile']
@@ -577,21 +636,18 @@ def sftpput():
             destination_folder = os.path.dirname(content['destFile']) if not ftp_host.path.isdir(
                 content['destFile']) else content['destFile']
         try:
-            while True:
-                putting_files_byte[f"{content['uploadID']}"] = {}
-                threads[f"{content['uploadID']}"] = thread_with_trace(target=uploadHandler, args=(content['sourceFile'],
-                                                                                                  destination_folder, content['uploadID'], server_type))
-                threads[f"{content['uploadID']}"].start()
-                # uploadHandler(content['sourceFile'],
-                #               destination_folder, content['uploadID'], server_type)
-                threads[f"{content['uploadID']}"].join()
-                return "OK", 200
+            putting_files_byte[f"{content['uploadID']}"] = {}
+            uploadHandler(content['sourceFile'],
+                          destination_folder, content['uploadID'], server_type, sftp)
+            if server_type == "sftp":
+                sftp.close()
+            return "OK", 200
         except Exception as e:
             return f"{e}", 500
 
 
-def uploadHandler(src, dest, uploadID, server_type):
-    global client, sftp, ftp_host, putting_files_byte
+def uploadHandler(src, dest, uploadID, server_type, sftp):
+    global ftp_host, putting_files_byte
     filename = os.path.basename(src)
     # if a directory
     if os.path.isdir(src):
@@ -602,7 +658,7 @@ def uploadHandler(src, dest, uploadID, server_type):
         for x in os.listdir(src):
             # try:
             uploadHandler(os.path.join(src, x), newfolder,
-                          uploadID, server_type)
+                          uploadID, server_type, sftp)
     # if not a directory
     else:
         if server_type == "sftp":
@@ -620,16 +676,10 @@ def uploadHandler(src, dest, uploadID, server_type):
 
 @app.route('/abortOperations', methods=['GET', 'POST'])
 def abortOperations():
-    if request.method == "GET":
-        global threads
-        uploadID = request.args.get('uploadID')
-        threads[f"{uploadID}"].kill()
-        return "OK", 200
-    else:
-        content = request.get_json()
-        dest = content['destFile']
-        deleteHandler(dest, "sftp")
-        return "OK", 200
+    global upload_sftp_ids
+    uploadID = request.args.get('uploadID')
+    upload_sftp_ids[f"{uploadID}"].close()
+    return "OK", 200
 
 
 if __name__ == '__main__':
