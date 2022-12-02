@@ -6,6 +6,7 @@ interface IChildren {
   path: string;
   modified: number;
   size: number;
+  mimetype: string;
   children?: IChildren[];
 }
 
@@ -44,5 +45,10 @@ export const selectedSSHFolderState = atom<string>({
 
 export const selectedSSHComponentState = atom<string>({
   key: "selectedSSHComponentState",
+  default: "",
+});
+
+export const SSHClipboardState = atom<string>({
+  key: "SSHClipboardState",
   default: "",
 });

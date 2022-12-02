@@ -6,6 +6,7 @@ interface IChildren {
   path: string;
   modified: number;
   size: number;
+  mimetype: string;
   children?: IChildren[];
 }
 
@@ -39,4 +40,9 @@ export const selectedComponentState = atom<string>({
 export const scrollLocState = atom<number>({
   key: "scrollLocState",
   default: 0,
+});
+
+export const clipboardState = atom<string>({
+  key: "clipboardState",
+  default: "",
 });

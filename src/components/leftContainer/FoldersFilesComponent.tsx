@@ -26,6 +26,7 @@ interface IChildren {
   path: string;
   modified: number;
   size: number;
+  mimetype: string;
   children?: IChildren[];
 }
 
@@ -128,6 +129,7 @@ const FoldersFilesComponent = ({
           points={anchorPoint}
           type={files.type}
           size={files.size}
+          mimetype={files.mimetype}
           server="api"
         />
       ) : (

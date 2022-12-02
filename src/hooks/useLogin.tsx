@@ -6,12 +6,14 @@ import {
   connectionTypeState,
   selectedSSHFolderState,
   SSHAuthState,
+  SSHClipboardState,
   SSHFilesState,
   SSHfolderListsState,
 } from "../atoms/sshServerState";
 import useApi from "./useApi";
 import { URLState } from "../atoms/URLState";
 import {
+  clipboardState,
   filesState,
   folderListsState,
   selectedFolderState,
@@ -32,6 +34,10 @@ export default function useLogin() {
   const setSelectedFolder = useSetRecoilState(selectedFolderState);
   const setSelectedSSHFolder = useSetRecoilState(selectedSSHFolderState);
   const [URL, setURL] = useRecoilState(URLState);
+
+  //clipboard management
+  const setClipboard = useSetRecoilState(clipboardState);
+  const setSSHClipboard = useSetRecoilState(SSHClipboardState);
 
   const api_login_handler = (
     host: string,
@@ -56,11 +62,13 @@ export default function useLogin() {
             setURL(host);
             setFolderLists([]);
             setSelectedFolder("");
+            setClipboard("");
             //reset SSH states
             setSSHFile([]);
             setSSHAuth(false);
             setSSHFolderLists([]);
             setSelectedSSHFolder("");
+            setSSHClipboard("");
           }
         })
         .catch((err) => {
@@ -114,6 +122,7 @@ export default function useLogin() {
           setSSHAuth(true);
           setSSHFolderLists([]);
           setSelectedSSHFolder("");
+          setSSHClipboard("");
         }
       })
       .catch((err) => {

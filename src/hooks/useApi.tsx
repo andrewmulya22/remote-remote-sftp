@@ -2,6 +2,7 @@ import axios from "axios";
 import React from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
+  clipboardState,
   fetchingState,
   filesState,
   folderListsState,
@@ -11,6 +12,7 @@ import {
   connectionTypeState,
   fetchingSSHState,
   selectedSSHComponentState,
+  SSHClipboardState,
   SSHFilesState,
   SSHfolderListsState,
 } from "../atoms/sshServerState";
@@ -18,6 +20,7 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import { URLState } from "../atoms/URLState";
 import { propertiesDataState, propertiesModalState } from "../atoms/modalState";
+import { copyQState } from "../atoms/uploadDownloadState";
 
 interface IChildren {
   type: string;
@@ -25,6 +28,7 @@ interface IChildren {
   path: string;
   modified: number;
   size: number;
+  mimetype: string;
   children?: IChildren[];
 }
 
@@ -52,6 +56,12 @@ export default function useApi() {
   const setPropertiesModal = useSetRecoilState(propertiesModalState);
   const setPropertiesData = useSetRecoilState(propertiesDataState);
 
+  //clipbaord states
+  const clipboard = useRecoilValue(clipboardState);
+  const SSHClipboard = useRecoilValue(SSHClipboardState);
+  const setCopyQ = useSetRecoilState(copyQState);
+
+  //SFTP or FTP
   const connectionType = useRecoilValue(connectionTypeState);
 
   //FUNCTIONS
@@ -205,8 +215,6 @@ export default function useApi() {
     //   ? [...folderLists]
     //   : [...SSHfolderLists];
     folders = folders.slice().sort((a, b) => a.length - b.length);
-    // console.log(filesSt);
-    // console.log(updatedFolders);
     // if a folder is deleted, remove from opened folders array
     if (filesExc.name.length) {
       if (
@@ -439,6 +447,55 @@ export default function useApi() {
       );
   };
 
+  const changePerm = async (newMod: string) => {
+    const path = selectedComponent;
+    let error = "";
+    await axios
+      .post(URL + "/api/" + "changeMod", {
+        path,
+        newMod,
+      })
+      .catch((err) => {
+        error = err.response.data;
+      });
+    return error;
+  };
+
+  const pasteFile = (server: "api" | "ssh" | "") => {
+    const sourceFile = server === "api" ? clipboard : SSHClipboard;
+    const dest = server === "api" ? selectedComponent : selectedSSHComponent;
+    const copyId = Math.floor(Math.random() * 1000);
+    setCopyQ((prevState) => [
+      ...prevState,
+      {
+        id: copyId,
+        name: sourceFile,
+      },
+    ]);
+    const removeFromQ = (id: number) => {
+      setCopyQ((prevState) => prevState.filter((state) => state.id !== id));
+    };
+    axios
+      .post(URL + "/" + server + "/copy", {
+        sourceFile,
+        destPath: dest,
+        server_type: connectionType,
+      })
+      .then(() => {
+        reloadFiles(server);
+        removeFromQ(copyId);
+      })
+      .catch((err) => {
+        removeFromQ(copyId);
+        showNotification({
+          title: `Error ${err.response.status}`,
+          message: err.response.data,
+          color: "red",
+          icon: <IconX />,
+        });
+      });
+  };
+
   return {
     fetchApi,
     getChildren,
@@ -448,6 +505,8 @@ export default function useApi() {
     renameFile,
     moveFile,
     reloadFiles,
+    changePerm,
     getProperties,
+    pasteFile,
   };
 }

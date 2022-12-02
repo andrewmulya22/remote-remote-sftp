@@ -55,3 +55,8 @@ export const propertiesDataState = atom<IProperties>({
     atime: 0,
   },
 });
+
+export const changeModState = atom<boolean>({
+  key: "changeModState",
+  default: false,
+});

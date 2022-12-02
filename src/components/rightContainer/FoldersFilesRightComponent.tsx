@@ -25,6 +25,7 @@ interface IChildren {
   path: string;
   modified: number;
   size: number;
+  mimetype: string;
   children?: IChildren[];
 }
 
@@ -131,6 +132,7 @@ const FoldersFilesRightComponent = ({
           points={anchorPoint}
           type={files.type}
           size={files.size}
+          mimetype={files.mimetype}
           server="ssh"
         />
       ) : (

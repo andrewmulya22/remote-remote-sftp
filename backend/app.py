@@ -1,3 +1,4 @@
+import time
 from flask import Flask, request
 from flask_cors import CORS
 import os
@@ -7,13 +8,15 @@ import ftputil
 import stat
 import functools
 import shutil
+import mimetypes
+from pathlib import Path
 app = Flask(__name__)
 CORS(app)
 
-# paramiko.util.log_to_file('./paramiko.log')
+paramiko.util.log_to_file('./paramiko.log')
 login_state = False
-ftp_host = None
-sftp_host = None
+ftp_host: ftputil.FTPHost = None
+sftp_host: paramiko.SFTPClient = None
 
 default_path_api = '/'
 default_path_ssh = '/'
@@ -85,9 +88,11 @@ def path_to_dict(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
+        d['mimetype'] = None
     else:
         d['type'] = "file"
         d['size'] = os.path.getsize(path)
+        d['mimetype'] = mimetypes.guess_type(path)
     return d
 
 
@@ -104,9 +109,11 @@ def path_to_dict_ssh(path, sftp):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
+        d['mimetype'] = None
     else:
         d['type'] = "file"
         d['size'] = fileState.st_size
+        d['mimetype'] = mimetypes.guess_type(path)
     return d
 
 
@@ -126,8 +133,10 @@ def path_to_dict_ftp(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
+        d['mimetype'] = None
     else:
         d['type'] = "file"
+        d['mimetype'] = mimetypes.guess_type(path)
         try:
             d['size'] = ftp_host.path.getsize(path)
         except:
@@ -250,6 +259,23 @@ def move():
     except Exception as e:
         return f"{e}", 500
 
+
+@app.route('/api/copy', methods=['POST'])
+def copy():
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    destPath = content["destPath"] if os.path.isdir(
+        content["destPath"]) else os.path.dirname(content["destPath"])
+    try:
+        if not os.path.isdir(sourceFile):
+            shutil.copy2(sourceFile, destPath)
+        else:
+            shutil.copytree(sourceFile, os.path.join(
+                destPath, os.path.basename(sourceFile)))
+        return "OK"
+    except Exception as e:
+        return f"{e}", 500
+
 # file view/write
 
 
@@ -294,6 +320,17 @@ def properties():
         return d, 200
     except Exception as e:
         return f"{e}", 500
+
+
+@app.route('/api/changeMod', methods=['POST'])
+def changePerm():
+    content = request.get_json()
+    try:
+        Path(content['path']).chmod(int(content['newMod'], 8))
+        return "OK"
+    except Exception as e:
+        return f"{e}", 500
+
 
 ##### SSH ROUTES #####
 
@@ -397,7 +434,7 @@ def ssh_rename():
 
 @app.route('/ssh/move', methods=['POST'])
 def ssh_move():
-    global sftp_host
+    global sftp_host, ftp_host
     content = request.get_json()
     server_type = content['server_type']
     sourceFile = content["sourceFile"]
@@ -413,6 +450,37 @@ def ssh_move():
         return "OK"
     except Exception as e:
         return f"{e}", 500
+
+
+@app.route('/ssh/copy', methods=['POST'])
+def ssh_copy():
+    content = request.get_json()
+    server_type = content['server_type']
+    if server_type != "ftp":
+        return "Operation not supported", 500
+    try:
+        SSHCopyHandler(content['sourceFile'], content['destPath'])
+        return "OK"
+    except Exception as e:
+        return f"{e}", 500
+
+
+def SSHCopyHandler(src, dst):
+    global sftp_host
+    dest_path = dst if ftp_host.path.isdir(dst) else os.path.dirname(dst)
+    if not ftp_host.path.isdir(src):
+        with ftp_host.open(src, "rb") as source:
+            with ftp_host.open(os.path.join(
+                    dest_path, os.path.basename(src)), "wb") as target:
+                ftp_host.copyfileobj(source, target)
+    else:
+        # create folder
+        newPath = os.path.join(dest_path, os.path.basename(src))
+        if not ftp_host.path.exists(newPath):
+            ftp_host.mkdir(newPath)
+        # iterate through inside of src dir
+        for x in ftp_host.listdir(src):
+            SSHCopyHandler(os.path.join(src, x), newPath)
 
 
 # file view/write
@@ -431,10 +499,6 @@ def ssh_filedata():
             f.close()
             sftp.close()
             return filedata, 200
-            # _, stdout, ___ = client.exec_command(
-            #     f"cat {content['filePath']}")
-            # output = stdout.read().decode('utf-8')
-            # return output, 200
         elif server_type == "ftp":
             f = ftp_host.open(content['filePath'], 'r')
             filedata = f.read()
@@ -486,7 +550,6 @@ def ssh_properties():
         d['atime'] = filestat.st_atime
         return d, 200
     except Exception as e:
-        print(e)
         return f"{e}", 500
 
 
@@ -497,7 +560,7 @@ putting_files = {}
 getting_files_byte = {}
 putting_files_byte = {}
 
-upload_sftp_ids = {}
+upload_sftps = {}
 
 
 def byte_transferred(type, transferID, filename, xfer, to_be_xfer):
@@ -618,13 +681,10 @@ def sftpput():
         destination_folder = None
         if server_type == "sftp":
             sftp = paramiko.SFTPClient.from_transport(sftp_host)
-            # print(sftp.get_channel().get_id())
         if server_type == "sftp":
             try:
                 fileState = sftp.stat(content['destFile'])
-                # upload_sftp_ids[f"{content['uploadID']}"] = sftp.get_channel(
-                # ).get_id()
-                upload_sftp_ids[f"{content['uploadID']}"] = sftp
+                upload_sftps[f"{content['uploadID']}"] = sftp
             except:
                 fileState = None
             # if not a directory
@@ -676,9 +736,9 @@ def uploadHandler(src, dest, uploadID, server_type, sftp):
 
 @app.route('/abortOperations', methods=['GET', 'POST'])
 def abortOperations():
-    global upload_sftp_ids
+    global upload_sftps
     uploadID = request.args.get('uploadID')
-    upload_sftp_ids[f"{uploadID}"].close()
+    upload_sftps[f"{uploadID}"].close()
     return "OK", 200
 
 

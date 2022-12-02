@@ -1,4 +1,11 @@
-import { Alert, Button, createStyles, Modal, Paper } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  createStyles,
+  Loader,
+  Modal,
+  Paper,
+} from "@mantine/core";
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -21,6 +28,7 @@ const EditModal = () => {
   //file data and error
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [fetching, setFetching] = useState(false);
 
   //useref
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +61,7 @@ const EditModal = () => {
       modalOpened.server.length &&
       (selectedComponent || selectedSSHComponent)
     ) {
+      setFetching(true);
       axios
         .post(
           // process.env.REACT_APP_SERVER_URL +
@@ -66,6 +75,7 @@ const EditModal = () => {
           }
         )
         .then((resp) => {
+          setFetching(false);
           if (resp.status === 200) {
             setValue(resp.data);
             setError("");
@@ -75,6 +85,7 @@ const EditModal = () => {
         })
         .catch((err) => {
           setValue("");
+          setFetching(false);
           setError(err.response.data);
         });
     }
@@ -113,16 +124,21 @@ const EditModal = () => {
         ) : (
           <></>
         )}
-        <Paper
-          component="textarea"
-          value={value}
-          ref={inputRef}
-          className={classes.textAreaStyle}
-          onChange={(e) => {
-            changeValueHandler(e);
-          }}
-        />
-
+        {fetching ? (
+          <div className={classes.divLoader}>
+            <Loader />
+          </div>
+        ) : (
+          <Paper
+            component="textarea"
+            value={value}
+            ref={inputRef}
+            className={classes.textAreaStyle}
+            onChange={(e) => {
+              changeValueHandler(e);
+            }}
+          />
+        )}
         <Button type="submit" value="Submit" className={classes.buttonStyle}>
           Edit
         </Button>
@@ -142,6 +158,11 @@ const useStyles = createStyles(() => ({
     width: "100%",
     lineHeight: "18px",
     minHeight: "50vh",
+  },
+  divLoader: {
+    display: "flex",
+    justifyContent: "center",
+    padding: "5vh 0",
   },
   buttonStyle: {
     marginTop: "2vh",

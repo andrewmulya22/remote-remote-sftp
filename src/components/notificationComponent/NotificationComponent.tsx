@@ -1,5 +1,5 @@
 import { Notification } from "@mantine/core";
-import { useState } from "react";
+// import { useState } from "react";
 import useUploadDownload from "../../hooks/useUploadDownload";
 
 interface Props {
@@ -15,14 +15,17 @@ export default function NotificationComponent({
   name,
   progress,
 }: Props) {
-  const [showState, setShowState] = useState(true);
+  // const [showState, setShowState] = useState(true);
   const { abortTransfer } = useUploadDownload();
   return (
     <Notification
-      color={type === "download" ? "blue" : "green"}
-      title={type === "download" ? "DOWNLOAD" : "UPLOAD"}
+      color={
+        type === "download" ? "blue" : type === "upload" ? "green" : "dark"
+      }
+      loading={type === "copy"}
+      title={type.toLocaleUpperCase()}
       style={{
-        display: !showState ? "none" : "",
+        // display: !showState ? "none" : "",
         marginBottom: "0.5vh",
         minWidth: "300px",
       }}
@@ -33,7 +36,7 @@ export default function NotificationComponent({
           : abortTransfer("upload", id);
       }}
     >
-      {name + " " + progress + "%"}
+      {type !== "copy" ? name + " " + progress + "%" : name}
     </Notification>
   );
 }

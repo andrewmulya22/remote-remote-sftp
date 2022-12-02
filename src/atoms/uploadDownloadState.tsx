@@ -8,9 +8,9 @@ interface IProgress {
   controller: AbortController;
 }
 
-interface IError {
+interface ICopyQ {
   id: number;
-  counter: number;
+  name: string;
 }
 
 //SSH FS data
@@ -21,5 +21,10 @@ export const uploadQState = atom<IProgress[]>({
 
 export const downloadQState = atom<IProgress[]>({
   key: "downloadQState",
+  default: [],
+});
+
+export const copyQState = atom<ICopyQ[]>({
+  key: "copyQState",
   default: [],
 });
