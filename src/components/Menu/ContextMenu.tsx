@@ -69,7 +69,7 @@ const ContextMenu = ({ points, type, size, mimetype, server }: Props) => {
   }
 
   let newYPoint = points.y;
-  if (points.y + 270 > height) newYPoint = points.y - 270;
+  if (points.y + 263 > height) newYPoint = points.y - 263;
   return (
     <ul className="menu" style={{ top: newYPoint, left: points.x, zIndex: 10 }}>
       <li

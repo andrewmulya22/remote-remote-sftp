@@ -1,9 +1,9 @@
-import { Alert, Button, createStyles, Input, Modal } from "@mantine/core";
+import { Button, createStyles, Input, Modal } from "@mantine/core";
 import axios from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../../atoms/apiServerState";
-import { changeModState, newFolderModalState } from "../../atoms/modalState";
+import { changeModState } from "../../atoms/modalState";
 import { URLState } from "../../atoms/URLState";
 import useApi from "../../hooks/useApi";
 
@@ -28,6 +28,7 @@ const ChangeModModal = () => {
           setDefValue(resp.data.mode.slice(-3));
         });
     }
+    // eslint-disable-next-line
   }, [modal]);
 
   const formHandler = async (e: React.FormEvent<HTMLFormElement>) => {

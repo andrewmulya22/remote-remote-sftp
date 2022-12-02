@@ -1,4 +1,3 @@
-import time
 from flask import Flask, request
 from flask_cors import CORS
 import os
@@ -13,7 +12,7 @@ from pathlib import Path
 app = Flask(__name__)
 CORS(app)
 
-paramiko.util.log_to_file('./paramiko.log')
+# paramiko.util.log_to_file('./paramiko.log')
 login_state = False
 ftp_host: ftputil.FTPHost = None
 sftp_host: paramiko.SFTPClient = None
@@ -57,17 +56,21 @@ def ssh_login():
     host = content['host']
     username = content['username']
     password = content['password']
+    if content['port'] == '' or content['port'] == None:
+        portNum = 22 if server_type == "sftp" else 21
     if server_type == "sftp":
         try:
-            sftp_host = paramiko.Transport((host, 22))
+            sftp_host = paramiko.Transport((host, portNum))
+            # rsa_key = paramiko.RSAKey.from_private_key_file(PRIVATEKEY)
             sftp_host.connect(username=username, password=password)
+            # sftp_host.connect(username=username, password=password, pkey=rsa_key)
             return "OK"
         except Exception as e:
             return f"{e}", 500
     elif server_type == "ftp":
         try:
             ftp_host = ftputil.FTPHost(host, username, password, session_factory=ftputil.session.session_factory(
-                encoding="UTF-8"))
+                encoding="UTF-8", port=portNum))
             ftp_host.use_list_a_option = True
             ftp_host.keep_alive()
             return "OK"

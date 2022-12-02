@@ -88,6 +88,7 @@ export default function useLogin() {
 
   const ssh_login_handler = (
     server_type: string,
+    port: string | null,
     host: string,
     username: string,
     password: string
@@ -110,6 +111,7 @@ export default function useLogin() {
       timeout: 5000,
       data: {
         server_type,
+        port,
         host: hostname,
         username,
         password,

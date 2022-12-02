@@ -451,7 +451,7 @@ export default function useApi() {
     const path = selectedComponent;
     let error = "";
     await axios
-      .post(URL + "/api/" + "changeMod", {
+      .post(URL + "/api/changeMod", {
         path,
         newMod,
       })
