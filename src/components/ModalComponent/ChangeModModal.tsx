@@ -19,6 +19,7 @@ const ChangeModModal = () => {
 
   useEffect(() => {
     if (modal) {
+      setDefValue("");
       setError("");
       axios
         .post(URL + "/api/properties", {

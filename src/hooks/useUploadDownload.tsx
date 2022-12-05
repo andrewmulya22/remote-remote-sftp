@@ -7,7 +7,11 @@ import {
   connectionTypeState,
   selectedSSHComponentState,
 } from "../atoms/sshServerState";
-import { downloadQState, uploadQState } from "../atoms/uploadDownloadState";
+import {
+  copyQState,
+  downloadQState,
+  uploadQState,
+} from "../atoms/uploadDownloadState";
 import useApi from "./useApi";
 import { URLState } from "../atoms/URLState";
 
@@ -18,6 +22,7 @@ export default function useUploadDownload() {
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
   const [uploadQ, setUploadQ] = useRecoilState(uploadQState);
   const [downloadQ, setDownloadQ] = useRecoilState(downloadQState);
+  const [copyQ, setCopyQ] = useRecoilState(copyQState);
   const { reloadFiles } = useApi();
   //server type
   const connectionType = useRecoilValue(connectionTypeState);
@@ -301,7 +306,7 @@ export default function useUploadDownload() {
     }, 1000);
   };
 
-  const abortTransfer = (type: "download" | "upload", id: number) => {
+  const abortTransfer = (type: "download" | "upload" | "copy", id: number) => {
     if (type === "download") {
       const downloadController = downloadQ.find(
         (controller) => controller.id === id
@@ -313,6 +318,10 @@ export default function useUploadDownload() {
         (controller) => controller.id === id
       );
       uploadController?.controller.abort();
+    }
+    if (type === "copy") {
+      const copyController = copyQ.find((controller) => controller.id === id);
+      copyController?.controller.abort();
     }
   };
 

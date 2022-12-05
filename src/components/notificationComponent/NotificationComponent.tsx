@@ -31,9 +31,9 @@ export default function NotificationComponent({
       }}
       // onClick={() => setShowState(false)}
       onClose={() => {
-        type === "download"
-          ? abortTransfer("download", id)
-          : abortTransfer("upload", id);
+        if (type === "download") abortTransfer("download", id);
+        if (type === "upload") abortTransfer("upload", id);
+        if (type === "copy") abortTransfer("copy", id);
       }}
     >
       {type !== "copy" ? name + " " + progress + "%" : name}

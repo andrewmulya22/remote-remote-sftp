@@ -464,35 +464,51 @@ export default function useApi() {
   const pasteFile = (server: "api" | "ssh" | "") => {
     const sourceFile = server === "api" ? clipboard : SSHClipboard;
     const dest = server === "api" ? selectedComponent : selectedSSHComponent;
-    const copyId = Math.floor(Math.random() * 1000);
+    const copyID = Math.floor(Math.random() * 1000);
+    //controller
+    const controller = new AbortController();
     setCopyQ((prevState) => [
       ...prevState,
       {
-        id: copyId,
+        id: copyID,
         name: sourceFile,
+        controller: controller,
       },
     ]);
     const removeFromQ = (id: number) => {
       setCopyQ((prevState) => prevState.filter((state) => state.id !== id));
     };
     axios
-      .post(URL + "/" + server + "/copy", {
-        sourceFile,
-        destPath: dest,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/" + server + "/copy",
+        {
+          sourceFile,
+          destPath: dest,
+          server_type: connectionType,
+          copyID,
+        },
+        {
+          signal: controller.signal,
+        }
+      )
       .then(() => {
         reloadFiles(server);
-        removeFromQ(copyId);
+        removeFromQ(copyID);
       })
       .catch((err) => {
-        removeFromQ(copyId);
+        removeFromQ(copyID);
         showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
+          title: `Error ${err.response ? err.response.status : ": CANCELED"}`,
+          message: err.response ? err.response.data : "Copy canceled",
           color: "red",
           icon: <IconX />,
         });
+        if (!err.response) {
+          axios.post(URL + "/abortcopy", {
+            server,
+            copyID,
+          });
+        }
       });
   };
 

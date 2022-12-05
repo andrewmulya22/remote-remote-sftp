@@ -23,6 +23,10 @@ default_path_ssh = '/'
 # WRAPPER
 
 
+# class Interrupt(Exception):
+#     """ interrupts the copy operation """
+
+
 def login_required(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -262,23 +266,6 @@ def move():
     except Exception as e:
         return f"{e}", 500
 
-
-@app.route('/api/copy', methods=['POST'])
-def copy():
-    content = request.get_json()
-    sourceFile = content["sourceFile"]
-    destPath = content["destPath"] if os.path.isdir(
-        content["destPath"]) else os.path.dirname(content["destPath"])
-    try:
-        if not os.path.isdir(sourceFile):
-            shutil.copy2(sourceFile, destPath)
-        else:
-            shutil.copytree(sourceFile, os.path.join(
-                destPath, os.path.basename(sourceFile)))
-        return "OK"
-    except Exception as e:
-        return f"{e}", 500
-
 # file view/write
 
 
@@ -391,7 +378,7 @@ def deleteHandler(path, server_type, sftp):
         dir_check = ftp_host.path.isdir(path)
         if dir_check:
             for x in ftp_host.listdir(path):
-                deleteHandler(os.path.join(path, x), server_type)
+                deleteHandler(os.path.join(path, x), server_type, sftp)
             ftp_host.rmdir(path)
         else:
             ftp_host.remove(path)
@@ -453,38 +440,6 @@ def ssh_move():
         return "OK"
     except Exception as e:
         return f"{e}", 500
-
-
-@app.route('/ssh/copy', methods=['POST'])
-def ssh_copy():
-    content = request.get_json()
-    server_type = content['server_type']
-    if server_type != "ftp":
-        return "Operation not supported", 500
-    try:
-        SSHCopyHandler(content['sourceFile'], content['destPath'])
-        return "OK"
-    except Exception as e:
-        return f"{e}", 500
-
-
-def SSHCopyHandler(src, dst):
-    global sftp_host
-    dest_path = dst if ftp_host.path.isdir(dst) else os.path.dirname(dst)
-    if not ftp_host.path.isdir(src):
-        with ftp_host.open(src, "rb") as source:
-            with ftp_host.open(os.path.join(
-                    dest_path, os.path.basename(src)), "wb") as target:
-                ftp_host.copyfileobj(source, target)
-    else:
-        # create folder
-        newPath = os.path.join(dest_path, os.path.basename(src))
-        if not ftp_host.path.exists(newPath):
-            ftp_host.mkdir(newPath)
-        # iterate through inside of src dir
-        for x in ftp_host.listdir(src):
-            SSHCopyHandler(os.path.join(src, x), newPath)
-
 
 # file view/write
 
@@ -552,6 +507,101 @@ def ssh_properties():
         d['mtime'] = filestat.st_mtime
         d['atime'] = filestat.st_atime
         return d, 200
+    except Exception as e:
+        return f"{e}", 500
+
+
+# copy handler
+
+copy_lists = []
+
+
+def interruptable_copy(copyID, server, *args, **kwargs):
+    global ftp_host
+    if copyID not in copy_lists:
+        raise Exception("Interrupting copy operation")
+    if server == "api":
+        return shutil.copy2(*args, **kwargs)
+    else:
+        return ftp_host.copyfileobj(*args, **kwargs)
+
+
+@app.route('/api/copy', methods=['POST'])
+def copy():
+    global copy_lists
+    content = request.get_json()
+    sourceFile = content["sourceFile"]
+    copyID = content["copyID"]
+    copy_lists.append(copyID)
+    destPath = content["destPath"] if os.path.isdir(
+        content["destPath"]) else os.path.dirname(content["destPath"])
+    try:
+        if not os.path.isdir(sourceFile):
+            interruptable_copy(copyID, "api", sourceFile, destPath)
+            # shutil.copy2(sourceFile, destPath)
+        else:
+            callback_copy = functools.partial(
+                interruptable_copy, copyID, "api")
+            shutil.copytree(sourceFile, os.path.join(
+                destPath, os.path.basename(sourceFile)), copy_function=callback_copy)
+        if copyID in copy_lists:
+            copy_lists.remove(copyID)
+        return "OK"
+    except Exception as e:
+        if copyID in copy_lists:
+            copy_lists.remove(copyID)
+        return f"{e}", 500
+
+
+@app.route('/ssh/copy', methods=['POST'])
+def ssh_copy():
+    global copy_lists
+    content = request.get_json()
+    server_type = content['server_type']
+    copyID = content["copyID"]
+    copy_lists.append(copyID)
+    if server_type != "ftp":
+        return "Operation not supported", 500
+    try:
+        SSHCopyHandler(copyID, content['sourceFile'], content['destPath'])
+        if copyID in copy_lists:
+            copy_lists.remove(copyID)
+        return "OK"
+    except Exception as e:
+        if copyID in copy_lists:
+            copy_lists.remove(copyID)
+        return f"{e}", 500
+
+
+def SSHCopyHandler(copyID, src, dst):
+    global sftp_host, copy_lists
+    # if copyID not in copy_lists:
+    #     raise Exception("canceled")
+    dest_path = dst if ftp_host.path.isdir(dst) else os.path.dirname(dst)
+    if not ftp_host.path.isdir(src):
+        with ftp_host.open(src, "rb") as source:
+            with ftp_host.open(os.path.join(
+                    dest_path, os.path.basename(src)), "wb") as target:
+                # ftp_host.copyfileobj(source, target)
+                interruptable_copy(copyID, "ssh", source, target)
+    else:
+        # create folder
+        newPath = os.path.join(dest_path, os.path.basename(src))
+        if not ftp_host.path.exists(newPath):
+            ftp_host.mkdir(newPath)
+        # iterate through inside of src dir
+        for x in ftp_host.listdir(src):
+            SSHCopyHandler(copyID, os.path.join(src, x), newPath)
+
+
+@app.route('/abortcopy', methods=['POST'])
+def abort_copy():
+    global copy_lists
+    content = request.get_json()
+    copyID = content['copyID']
+    try:
+        copy_lists.remove(copyID)
+        return "OK", 200
     except Exception as e:
         return f"{e}", 500
 

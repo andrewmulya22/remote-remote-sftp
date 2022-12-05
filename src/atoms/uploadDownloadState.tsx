@@ -11,6 +11,7 @@ interface IProgress {
 interface ICopyQ {
   id: number;
   name: string;
+  controller: AbortController;
 }
 
 //SSH FS data
