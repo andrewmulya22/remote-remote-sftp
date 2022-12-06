@@ -51,8 +51,32 @@ export const unixModeConverter = (unixMode: string) => {
       startNum = startNum / 2;
     }
   }
-
   return convertedMode;
+};
+
+export const unixModeToBoolConverter = (unixMode: number | string) => {
+  let modeArr: boolean[] = [];
+  if (typeof unixMode === "string") unixMode = parseInt(unixMode);
+  for (let i = 4; i >= 1; i = i / 2) {
+    if (unixMode >= i) {
+      modeArr = [...modeArr, true];
+      unixMode = unixMode - i;
+    } else modeArr = [...modeArr, false];
+  }
+  return modeArr;
+};
+
+//ex params: (unixMode = 5, index = 1, state = false) => 5+2*1 = 7
+export const unixModeOperator = (
+  unixMode: number | string,
+  index: number,
+  state: boolean
+) => {
+  if (typeof unixMode === "string") unixMode = parseInt(unixMode);
+  const modeArr = [4, 2, 1];
+  if (state) unixMode = unixMode - modeArr[index];
+  else unixMode = unixMode + modeArr[index];
+  return unixMode;
 };
 
 export const numberWithCommas = (x: number) => {

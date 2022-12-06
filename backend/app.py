@@ -23,10 +23,6 @@ default_path_ssh = '/'
 # WRAPPER
 
 
-# class Interrupt(Exception):
-#     """ interrupts the copy operation """
-
-
 def login_required(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -575,8 +571,6 @@ def ssh_copy():
 
 def SSHCopyHandler(copyID, src, dst):
     global sftp_host, copy_lists
-    # if copyID not in copy_lists:
-    #     raise Exception("canceled")
     dest_path = dst if ftp_host.path.isdir(dst) else os.path.dirname(dst)
     if not ftp_host.path.isdir(src):
         with ftp_host.open(src, "rb") as source:
