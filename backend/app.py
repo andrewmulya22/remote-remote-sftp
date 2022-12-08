@@ -1,3 +1,4 @@
+import time
 from flask import Flask, request
 from flask_cors import CORS
 import os
@@ -9,8 +10,12 @@ import functools
 import shutil
 import mimetypes
 from pathlib import Path
+from flask_socketio import SocketIO, emit
+
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+# CORS(app)
 
 # paramiko.util.log_to_file('./paramiko.log')
 login_state = False
@@ -607,6 +612,7 @@ putting_files = {}
 getting_files_byte = {}
 putting_files_byte = {}
 
+download_sftps = {}
 upload_sftps = {}
 
 
@@ -636,42 +642,43 @@ def byte_transferred_ftp(type, transferID, filename, to_be_xfer, bytes):
         putting_files[f"{transferID}"][filename] = f"{xfer/to_be_xfer*100}%"
 
 
-@app.route('/sftpget', methods=['GET', 'DELETE', 'POST'])
+def delete_progress(type, transferID, server_type):
+    global getting_files, getting_files_byte, putting_files, putting_files_byte
+    if type == "download":
+        if getting_files[f"{transferID}"]:
+            getting_files.pop(f"{transferID}")
+        if server_type == "ftp" and getting_files_byte[f"{transferID}"]:
+            getting_files_byte.pop(f"{transferID}")
+    elif type == "upload":
+        if putting_files[f"{transferID}"]:
+            putting_files.pop(f"{transferID}")
+        if server_type == "ftp" and putting_files_byte[f"{transferID}"]:
+            putting_files_byte.pop(f"{transferID}")
+    # except Exception as e:
+    #     return f"{e}", 500
+
+
+@app.route('/sftpget', methods=['POST'])
 def sftpget():
-    global getting_files, getting_files_byte, sftp_host
-    if request.method == "GET":
-        downloadID = request.args.get('downloadID')
-        try:
-            return getting_files[f"{downloadID}"]
-        except Exception as e:
-            return f"{e}", 204
-    elif request.method == "DELETE":
-        downloadID = request.args.get('downloadID')
-        try:
-            if getting_files[f"{downloadID}"]:
-                getting_files.pop(f"{downloadID}")
-            if request.args.get('server_type') == "ftp" and getting_files_byte[f"{downloadID}"]:
-                getting_files_byte.pop(f"{downloadID}")
-            return "OK"
-        except Exception as e:
-            return f"{e}", 500
-    elif request.method == "POST":
-        content = request.get_json()
-        # destination folder
-        destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
-            content['destFile']) else content['destFile']
-        try:
-            sftp = paramiko.SFTPClient.from_transport(
-                sftp_host) if content['server_type'] == "sftp" else None
-            if content['server_type'] == "ftp":
-                getting_files_byte[f"{content['downloadID']}"] = {}
-            downloadHandler(content['sourceFile'],
-                            destination_folder, content['downloadID'], content['server_type'], sftp)
-            if sftp is not None:
-                sftp.close()
-            return "OK", 200
-        except Exception as e:
-            return f"{e}", 500
+    global getting_files_byte, sftp_host
+    content = request.get_json()
+    # destination folder
+    destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
+        content['destFile']) else content['destFile']
+    try:
+        sftp: paramiko.SFTPClient = None
+        if content['server_type'] == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(sftp_host)
+            download_sftps[f"{content['downloadID']}"] = sftp
+        if content['server_type'] == "ftp":
+            getting_files_byte[f"{content['downloadID']}"] = {}
+        downloadHandler(content['sourceFile'],
+                        destination_folder, content['downloadID'], content['server_type'], sftp)
+        if sftp is not None:
+            sftp.close()
+        return "OK", 200
+    except Exception as e:
+        return f"{e}", 500
 
 
 def downloadHandler(src, dest, downloadID, server_type, sftp):
@@ -703,54 +710,37 @@ def downloadHandler(src, dest, downloadID, server_type, sftp):
                 dest, filename), callback_downloadID)
 
 
-@app.route('/sftpput', methods=['GET', 'DELETE', 'POST'])
+@app.route('/sftpput', methods=['POST'])
 def sftpput():
-    global putting_files, sftp_host, ftp_host, putting_files_byte
-    if request.method == "GET":
-        uploadID = request.args.get('uploadID')
+    global sftp_host, ftp_host, putting_files_byte
+    content = request.get_json()
+    server_type = content['server_type']
+    destination_folder = None
+    sftp: paramiko.SFTPClient = None
+    if server_type == "sftp":
+        sftp = paramiko.SFTPClient.from_transport(sftp_host)
+        upload_sftps[f"{content['uploadID']}"] = sftp
         try:
-            return putting_files[f"{uploadID}"]
-        except Exception as e:
-            return f"{e}", 204
-    elif request.method == "DELETE":
-        uploadID = request.args.get('uploadID')
-        try:
-            if putting_files[f"{uploadID}"]:
-                putting_files.pop(f"{uploadID}")
-            if request.args.get('server_type') == "ftp" and putting_files_byte[f"{uploadID}"]:
-                putting_files_byte.pop(f"{uploadID}")
-            return "OK"
-        except Exception as e:
-            return f"{e}", 500
-    elif request.method == "POST":
-        content = request.get_json()
-        server_type = content['server_type']
-        destination_folder = None
+            fileState = sftp.stat(content['destFile'])
+        except:
+            fileState = None
+        # if not a directory
+        if fileState is None or not stat.S_ISDIR(fileState.st_mode):
+            destination_folder = os.path.dirname(content['destFile'])
+        else:
+            destination_folder = content['destFile']
+    elif server_type == "ftp":
+        destination_folder = os.path.dirname(content['destFile']) if not ftp_host.path.isdir(
+            content['destFile']) else content['destFile']
+    try:
+        putting_files_byte[f"{content['uploadID']}"] = {}
+        uploadHandler(content['sourceFile'],
+                      destination_folder, content['uploadID'], server_type, sftp)
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(sftp_host)
-        if server_type == "sftp":
-            try:
-                fileState = sftp.stat(content['destFile'])
-                upload_sftps[f"{content['uploadID']}"] = sftp
-            except:
-                fileState = None
-            # if not a directory
-            if fileState is None or not stat.S_ISDIR(fileState.st_mode):
-                destination_folder = os.path.dirname(content['destFile'])
-            else:
-                destination_folder = content['destFile']
-        elif server_type == "ftp":
-            destination_folder = os.path.dirname(content['destFile']) if not ftp_host.path.isdir(
-                content['destFile']) else content['destFile']
-        try:
-            putting_files_byte[f"{content['uploadID']}"] = {}
-            uploadHandler(content['sourceFile'],
-                          destination_folder, content['uploadID'], server_type, sftp)
-            if server_type == "sftp":
-                sftp.close()
-            return "OK", 200
-        except Exception as e:
-            return f"{e}", 500
+            sftp.close()
+        return "OK", 200
+    except Exception as e:
+        return f"{e}", 500
 
 
 def uploadHandler(src, dest, uploadID, server_type, sftp):
@@ -781,13 +771,50 @@ def uploadHandler(src, dest, uploadID, server_type, sftp):
                 dest, filename), callback_uploadID)
 
 
-@app.route('/abortOperations', methods=['GET', 'POST'])
-def abortOperations():
-    global upload_sftps
-    uploadID = request.args.get('uploadID')
-    upload_sftps[f"{uploadID}"].close()
+# Socket Transfer
+
+@socketio.on('transferProgress')
+def transfer_progress(data):
+    global getting_files
+    transferID = data['transferID']
+    # wait for the array to be made
+    time.sleep(0.5)
+    while True:
+        try:
+            if data['type'] == "download":
+                emit("downloadProgressUpdate", {
+                    "downloadID": transferID,
+                    "files": getting_files[f"{transferID}"]
+                })
+            if data['type'] == "upload":
+                emit("uploadProgressUpdate", {
+                    "uploadID": transferID,
+                    "files": putting_files[f"{transferID}"]
+                })
+            time.sleep(1)
+        except:
+            break
+
+
+@socketio.on('deleteProgress')
+def delete_progress_array(data):
+    transfer_type = data['type']
+    transferID = data['transferID']
+    server_type = data['server_type']
+    delete_progress(transfer_type, transferID, server_type)
+
+
+@socketio.on('abortOperations')
+def abortOperations(data):
+    global upload_sftps, download_sftps
+    type = data['type']
+    if type == "download":
+        download_sftps[f"{data['transferID']}"].close()
+    if type == "upload":
+        upload_sftps[f"{data['transferID']}"].close()
     return "OK", 200
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', threaded=True)
+    # app.run(debug=True, host='0.0.0.0', threaded=True)
+    socketio.run(app, host="0.0.0.0", debug=True)

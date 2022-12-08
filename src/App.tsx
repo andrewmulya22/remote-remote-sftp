@@ -9,8 +9,10 @@ import NewFolderModal from "./components/ModalComponent/NewFolderModal";
 import PropertiesModal from "./components/ModalComponent/PropertiesModal";
 import NotificationStack from "./components/notificationComponent/NotificationStack";
 import RightContainer from "./components/rightContainer/RightContainer";
+// import { SocketContext } from "./context/Socket";
 
 function App() {
+  // const socket = useContext(SocketContext);
   return (
     <div
       className="App"

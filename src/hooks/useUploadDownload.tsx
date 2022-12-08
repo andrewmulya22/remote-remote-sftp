@@ -14,6 +14,8 @@ import {
 } from "../atoms/uploadDownloadState";
 import useApi from "./useApi";
 import { URLState } from "../atoms/URLState";
+import { useContext, useEffect } from "react";
+import { SocketContext } from "../context/Socket";
 
 export default function useUploadDownload() {
   const URL = useRecoilValue(URLState);
@@ -26,6 +28,52 @@ export default function useUploadDownload() {
   const { reloadFiles } = useApi();
   //server type
   const connectionType = useRecoilValue(connectionTypeState);
+
+  //socket
+  const socket = useContext(SocketContext);
+  useEffect(() => {
+    if (socket) {
+      //get download progress
+      socket.on("downloadProgressUpdate", (data) => {
+        const downloadID = data.downloadID;
+        const downloadingFile = Object.keys(data.files)[0];
+        const name = downloadingFile;
+        const progress = data.files[`${downloadingFile}`];
+        setDownloadQ((prevState) =>
+          prevState.map((state) => {
+            if (state.id === downloadID)
+              return {
+                ...state,
+                name: name,
+                progress: parseInt(progress),
+                errorCount: 0,
+              };
+            return state;
+          })
+        );
+      });
+
+      //get upload progrss
+      socket.on("uploadProgressUpdate", (data) => {
+        const uploadID = data.uploadID;
+        const uploadingFile = Object.keys(data.files)[0];
+        const name = uploadingFile;
+        const progress = data.files[`${uploadingFile}`];
+        setUploadQ((prevState) =>
+          prevState.map((state) => {
+            if (state.id === uploadID)
+              return {
+                ...state,
+                name: name,
+                progress: parseInt(progress),
+                errorCount: 0,
+              };
+            return state;
+          })
+        );
+      });
+    }
+  }, [socket]);
 
   // DOWNLOAD FILE
   const downloadFile = (
@@ -75,7 +123,12 @@ export default function useUploadDownload() {
             color: "red",
             icon: <IconX />,
           });
-        if (err.message === "canceled") {
+        else {
+          if (connectionType === "sftp")
+            socket?.emit("abortOperations", {
+              type: "download",
+              transferID: downloadID,
+            });
           showNotification({
             title: "CANCELED",
             message: "Download canceled",
@@ -85,79 +138,18 @@ export default function useUploadDownload() {
           reloadFiles("api");
         }
       });
-    const getProgress = () => {
-      axios
-        .get(URL + "/sftpget", {
-          params: {
-            downloadID,
-            server_type: connectionType,
-          },
-        })
-        // add to download queue
-        .then((response) => {
-          return new Promise((resolve, reject) => {
-            if (response.status === 200) {
-              const downloadingFile = Object.keys(response.data)[0];
-              //update download queue
-              setDownloadQ((prevState) =>
-                prevState.map((state) => {
-                  if (state.id === downloadID)
-                    return {
-                      ...state,
-                      name: downloadingFile,
-                      progress: parseInt(response.data[downloadingFile]),
-                      errorCount: 0,
-                    };
-                  return state;
-                })
-              );
-            }
-            //count how many times error is returned
-            else if (response.status === 204) {
-              setDownloadQ((prevState) =>
-                prevState.map((state) => {
-                  if (state.id === downloadID) {
-                    if (state.errorCount > 5)
-                      reject({
-                        response: {
-                          status: 500,
-                          data: "Internal Server Errror : Download failed",
-                        },
-                      });
-                    return {
-                      ...state,
-                      errorCount: state.errorCount + 1,
-                    };
-                  }
-                  return state;
-                })
-              );
-            }
-          });
-        })
-        .catch((err) => {
-          downloadDone = true;
-          downloadSuccess = false;
-          if (err.response)
-            showNotification({
-              title: `Error ${err.response.status}`,
-              message: err.response.data,
-              color: "red",
-              icon: <IconX />,
-            });
-        });
-    };
+    socket?.emit("transferProgress", {
+      type: "download",
+      transferID: downloadID,
+    });
     const progressInterval = setInterval(() => {
-      getProgress();
       // if download has reached 100%
       if (downloadDone) {
         clearInterval(progressInterval);
-        // clear download array
-        axios.delete(URL + "/sftpget", {
-          params: {
-            downloadID,
-            server_type: connectionType,
-          },
+        socket?.emit("deleteProgress", {
+          type: "download",
+          transferID: downloadID,
+          server_type: connectionType,
         });
         //remove from download queue
         setDownloadQ((prevState) =>
@@ -215,12 +207,11 @@ export default function useUploadDownload() {
             color: "red",
             icon: <IconX />,
           });
-        if (err.message === "canceled") {
+        else {
           if (connectionType === "sftp")
-            axios.get(URL + "/abortOperations", {
-              params: {
-                uploadID,
-              },
+            socket?.emit("abortOperations", {
+              type: "upload",
+              transferID: uploadID,
             });
           showNotification({
             title: "CANCELED",
@@ -231,70 +222,19 @@ export default function useUploadDownload() {
           reloadFiles("ssh");
         }
       });
-    const getProgress = () => {
-      axios
-        .get(URL + "/sftpput", {
-          params: {
-            uploadID,
-            server_type: connectionType,
-          },
-        })
-        // add to download queue
-        .then((response) => {
-          return new Promise((resolve, reject) => {
-            if (response.status === 200) {
-              const uploadingFile = Object.keys(response.data)[0];
-              //update download queue
-              setUploadQ((prevState) =>
-                prevState.map((state) => {
-                  if (state.id === uploadID)
-                    return {
-                      ...state,
-                      name: uploadingFile,
-                      progress: parseInt(response.data[uploadingFile]),
-                      errorCount: 0,
-                    };
-                  return state;
-                })
-              );
-            } else if (response.status === 204) {
-              setUploadQ((prevState) =>
-                prevState.map((state) => {
-                  if (state.id === uploadID) {
-                    if (state.errorCount > 5)
-                      reject({
-                        response: {
-                          status: 500,
-                          data: "Internal Server Errror : Upload failed",
-                        },
-                      });
-                    return {
-                      ...state,
-                      errorCount: state.errorCount + 1,
-                    };
-                  }
-                  return state;
-                })
-              );
-            }
-          });
-        })
-        .catch((err) => {
-          uploadDone = true;
-          uploadSuccess = false;
-          showNotification({
-            title: `Error ${err.response.status}`,
-            message: err.response.data,
-            color: "red",
-            icon: <IconX />,
-          });
-        });
-    };
+    socket?.emit("transferProgress", {
+      type: "upload",
+      transferID: uploadID,
+    });
     const progressInterval = setInterval(() => {
-      getProgress();
       // if download has reached 100%
       if (uploadDone) {
         clearInterval(progressInterval);
+        socket?.emit("deleteProgress", {
+          type: "upload",
+          transferID: uploadID,
+          server_type: connectionType,
+        });
         //remove from download queue
         setUploadQ((prevState) =>
           prevState.filter((state) => state.id !== uploadID)

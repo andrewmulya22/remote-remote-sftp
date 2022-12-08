@@ -5,6 +5,7 @@ import "./index.css";
 import App from "./App";
 import { RecoilRoot } from "recoil";
 import reportWebVitals from "./reportWebVitals";
+import SocketProvider from "./context/Socket";
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement
@@ -12,9 +13,11 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <RecoilRoot>
-      <NotificationsProvider>
-        <App />
-      </NotificationsProvider>
+      <SocketProvider>
+        <NotificationsProvider>
+          <App />
+        </NotificationsProvider>
+      </SocketProvider>
     </RecoilRoot>
   </React.StrictMode>
 );
