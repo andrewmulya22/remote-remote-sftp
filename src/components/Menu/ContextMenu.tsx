@@ -1,7 +1,7 @@
 import { Divider } from "@mantine/core";
 import { useViewportSize } from "@mantine/hooks";
 import { IconDownload, IconUpload } from "@tabler/icons";
-import React from "react";
+import React, { useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   clipboardState,
@@ -14,7 +14,7 @@ import {
 import {
   changeModState,
   editModalState,
-  newFolderModalState,
+  newFileFolderModalState,
 } from "../../atoms/modalState";
 import {
   connectionTypeState,
@@ -36,9 +36,15 @@ interface Props {
   server: "api" | "ssh" | "";
 }
 
-const ContextMenu = ({ points, type, size, mimetype, server }: Props) => {
+export default function ContextMenu({
+  points,
+  type,
+  size,
+  mimetype,
+  server,
+}: Props) {
   const { height } = useViewportSize();
-  const setNewFolderModal = useSetRecoilState(newFolderModalState);
+  const setNewFileFolderModal = useSetRecoilState(newFileFolderModalState);
   const setEditModal = useSetRecoilState(editModalState);
   const setChangeModModal = useSetRecoilState(changeModState);
   const setRenameLeft = useSetRecoilState(renameStateLeft);
@@ -57,21 +63,35 @@ const ContextMenu = ({ points, type, size, mimetype, server }: Props) => {
   const [clipboard, setClipboard] = useRecoilState(clipboardState);
   const [SSHClipboard, setSSHClipboard] = useRecoilState(SSHClipboardState);
 
+  const ref = useRef<HTMLUListElement>(null);
+
   const copyHandler = () => {
     if (server === "api") setClipboard(selectedComponent);
     if (server === "ssh") setSSHClipboard(selectedSSHComponent);
   };
 
   let textfileCheck = "nontext";
+
   if (mimetype) {
     if (!mimetype[0] && !mimetype[1]) textfileCheck = "text";
-    if (mimetype[0] && mimetype[0].includes("text")) textfileCheck = "text";
+    if (
+      mimetype[0] &&
+      (mimetype[0].includes("text") ||
+        mimetype[0].includes("javascript") ||
+        mimetype[0].includes("json"))
+    )
+      textfileCheck = "text";
   }
 
   let newYPoint = points.y;
-  if (points.y + 263 > height) newYPoint = points.y - 263;
+  if (ref.current && points.y + ref.current?.clientHeight > height)
+    newYPoint = points.y - ref.current?.clientHeight;
   return (
-    <ul className="menu" style={{ top: newYPoint, left: points.x, zIndex: 10 }}>
+    <ul
+      className="menu"
+      style={{ top: newYPoint, left: points.x, zIndex: 10 }}
+      ref={ref}
+    >
       <li
         className="menu__item"
         onClick={() => {
@@ -98,35 +118,51 @@ const ContextMenu = ({ points, type, size, mimetype, server }: Props) => {
         >
           Edit
         </li>
-      ) : (
-        <></>
-      )}
+      ) : null}
       <li
         className="menu__item"
         onClick={() =>
-          setNewFolderModal({ opened: true, type: type, server: server })
+          setNewFileFolderModal({
+            createType: "folder",
+            opened: true,
+            type: type,
+            server: server,
+          })
         }
       >
         New Folder
       </li>
-      {(server === "api" || connectionType !== "sftp") && (
+      <li
+        className="menu__item"
+        onClick={() =>
+          setNewFileFolderModal({
+            createType: "file",
+            opened: true,
+            type: type,
+            server: server,
+          })
+        }
+      >
+        New File
+      </li>
+      {server === "api" || connectionType !== "sftp" ? (
         <li className="menu__item" onClick={() => copyHandler()}>
           Copy
         </li>
-      )}
+      ) : null}
 
-      {((server === "api" && clipboard) ||
-        (server === "ssh" && connectionType === "ftp" && SSHClipboard)) && (
+      {(server === "api" && clipboard) ||
+      (server === "ssh" && connectionType === "ftp" && SSHClipboard) ? (
         <li className="menu__item" onClick={() => pasteFile(server)}>
           Paste
         </li>
-      )}
+      ) : null}
       <Divider my="sm" style={{ margin: "0.2vh 0.5vw" }} />
-      {server === "api" && (
+      {server === "api" ? (
         <li className="menu__item" onClick={() => setChangeModModal(true)}>
           Chmod
         </li>
-      )}
+      ) : null}
       <li className="menu__item" onClick={() => deleteFiles(server)}>
         Delete
       </li>
@@ -148,6 +184,4 @@ const ContextMenu = ({ points, type, size, mimetype, server }: Props) => {
       </li>
     </ul>
   );
-};
-
-export default React.memo(ContextMenu);
+}

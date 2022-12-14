@@ -9,7 +9,9 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { IconKey, IconRefresh } from "@tabler/icons";
+import { showNotification } from "@mantine/notifications";
+import { IconKey, IconRefresh, IconX } from "@tabler/icons";
+import axios from "axios";
 import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SSHAuthState } from "../../atoms/sshServerState";
@@ -27,25 +29,34 @@ const SSHLoginComponent = () => {
   const SSHHOST = useRef<HTMLInputElement>(null);
   const SSHUSERNAME = useRef<HTMLInputElement>(null);
   const SSHPASSWORD = useRef<HTMLInputElement>(null);
-  const PKFILE = useRef<HTMLButtonElement>(null);
   const SSHAuth = useRecoilValue(SSHAuthState);
+  const [PKEY, setPKEY] = useState<File | null>(null);
 
   const ssh_login = (e: React.FormEvent) => {
     e.preventDefault();
     const portNum = SSHPORT.current ? SSHPORT.current.value : null;
-    if (
-      SERVERSELECT.current &&
-      SSHHOST.current &&
-      SSHUSERNAME.current &&
-      SSHPASSWORD.current
-    )
-      ssh_login_handler(
-        SERVERSELECT.current.value,
-        portNum,
-        SSHHOST.current.value,
-        SSHUSERNAME.current.value,
-        SSHPASSWORD.current.value
-      );
+    if (SERVERSELECT.current && SSHHOST.current && SSHUSERNAME.current) {
+      if (
+        (SERVERSELECT.current.value === "sftp" &&
+          (SSHPASSWORD.current?.value || PKEY)) ||
+        (SERVERSELECT.current.value === "ftp" && SSHPASSWORD.current?.value)
+      )
+        ssh_login_handler(
+          SERVERSELECT.current.value,
+          portNum,
+          SSHHOST.current.value,
+          SSHUSERNAME.current.value,
+          SSHPASSWORD.current ? SSHPASSWORD.current.value : null,
+          PKEY
+        );
+      else
+        showNotification({
+          title: "Input Error",
+          message: "Invalid Input",
+          color: "red",
+          icon: <IconX />,
+        });
+    }
   };
 
   const serverSelect = [
@@ -77,7 +88,11 @@ const SSHLoginComponent = () => {
           <Checkbox
             checked={checkboxVal}
             onChange={() => {
-              setCheckboxVal((prevVal) => !prevVal);
+              setCheckboxVal((prevVal) => {
+                if (prevVal) setPKEY(null);
+                else SSHPASSWORD.current!.value = "";
+                return !prevVal;
+              });
             }}
           />
           <Text size={11}>PK</Text>
@@ -86,7 +101,8 @@ const SSHLoginComponent = () => {
           <FileInput
             placeholder="Private Key"
             icon={<IconKey size={14} />}
-            ref={PKFILE}
+            value={PKEY}
+            onChange={setPKEY}
             style={{ width: "200px", maxWidth: "8vw" }}
           />
         ) : (

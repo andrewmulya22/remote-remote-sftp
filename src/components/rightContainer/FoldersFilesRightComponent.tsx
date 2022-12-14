@@ -142,10 +142,12 @@ const FoldersFilesRightComponent = ({
         className={[classes.container, "folderButton"].join(" ")}
         variant={selectedComponent === files.path ? "light" : "subtle"}
         onClick={() => {
+          setRename(false);
           fillSelectedFolder();
           setSelectedComponent(files.path);
         }}
         onContextMenu={(event: React.MouseEvent) => {
+          setRename(false);
           fillSelectedFolder();
           handleContextMenu(event);
           setSelectedComponent(files.path);

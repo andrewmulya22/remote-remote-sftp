@@ -1,19 +1,25 @@
 import { Button, createStyles, Input, Modal } from "@mantine/core";
 import React, { useRef } from "react";
 import { useRecoilState } from "recoil";
-import { newFolderModalState } from "../../atoms/modalState";
+import { newFileFolderModalState } from "../../atoms/modalState";
 import useApi from "../../hooks/useApi";
 
-const NewFolderModal = () => {
-  const [modal, setModal] = useRecoilState(newFolderModalState);
+const NewFileFolderModal = () => {
+  const [modal, setModal] = useRecoilState(newFileFolderModalState);
   const { classes } = useStyles();
-  const folderInputRef = useRef<HTMLInputElement>(null);
-  const { createFolder } = useApi();
+  const filefolderInputRef = useRef<HTMLInputElement>(null);
+  const { createFileFolder } = useApi();
 
   const formHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (folderInputRef.current?.value)
-      createFolder(modal.type, modal.server, folderInputRef.current?.value);
+    if (filefolderInputRef.current?.value) {
+      createFileFolder(
+        modal.createType,
+        modal.type,
+        modal.server,
+        filefolderInputRef.current?.value
+      );
+    }
     setModal((prevState) => {
       return { ...prevState, opened: false };
     });
@@ -27,7 +33,7 @@ const NewFolderModal = () => {
           return { ...prevState, opened: false };
         })
       }
-      title="New Folder"
+      title={modal.createType === "folder" ? "New Folder" : "New File"}
       size="30%"
       centered
       className={classes.modalStyle}
@@ -37,7 +43,7 @@ const NewFolderModal = () => {
       }}
     >
       <form onSubmit={(e) => formHandler(e)}>
-        <Input placeholder="Enter your folder name" ref={folderInputRef} />
+        <Input placeholder="Enter new name" ref={filefolderInputRef} />
         <Button type="submit" value="Submit" className={classes.buttonStyle}>
           Create
         </Button>
@@ -58,4 +64,4 @@ const useStyles = createStyles(() => ({
   },
 }));
 
-export default React.memo(NewFolderModal);
+export default React.memo(NewFileFolderModal);

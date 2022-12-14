@@ -20,7 +20,7 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import { URLState } from "../atoms/URLState";
 import { propertiesDataState, propertiesModalState } from "../atoms/modalState";
-import { copyQState } from "../atoms/uploadDownloadState";
+import { copyQState, delQState } from "../atoms/uploadDownloadState";
 
 interface IChildren {
   type: string;
@@ -56,10 +56,13 @@ export default function useApi() {
   const setPropertiesModal = useSetRecoilState(propertiesModalState);
   const setPropertiesData = useSetRecoilState(propertiesDataState);
 
-  //clipbaord states
+  //clipboard states
   const clipboard = useRecoilValue(clipboardState);
   const SSHClipboard = useRecoilValue(SSHClipboardState);
   const setCopyQ = useSetRecoilState(copyQState);
+
+  //delete states
+  const setDelQ = useSetRecoilState(delQState);
 
   //SFTP or FTP
   const connectionType = useRecoilValue(connectionTypeState);
@@ -72,7 +75,7 @@ export default function useApi() {
     if (server === "api") setFetching(true);
     if (server === "ssh") setFetchingSSH(true);
     axios
-      .get(URL + "/" + server, {
+      .get(URL + "/files/" + server, {
         params: {
           server_type,
         },
@@ -107,7 +110,7 @@ export default function useApi() {
   const getChildren = async (server: "api" | "ssh" | "", dirPath: string) => {
     return new Promise((resolve, reject) => {
       axios
-        .post(URL + "/" + server + "/children", {
+        .post(URL + "/files/" + server + "-children", {
           path: dirPath,
           server_type: connectionType,
         })
@@ -161,8 +164,18 @@ export default function useApi() {
           resolve("Success");
         })
         .catch((err) => {
-          server === "api" ? setFetching(false) : setFetchingSSH(false);
-          // reject(err.response.data);
+          // server === "api" ? setFetching(false) : setFetchingSSH(false);
+          if (server === "api") {
+            setFetching(false);
+            setFolderLists((prevState) =>
+              prevState.filter((state) => !state.includes(dirPath))
+            );
+          } else {
+            setFetchingSSH(false);
+            setSSHFolderLists((prevState) =>
+              prevState.filter((state) => !state.includes(dirPath))
+            );
+          }
           showNotification({
             title: `Error ${err.response.status}`,
             message: err.response.data,
@@ -209,11 +222,6 @@ export default function useApi() {
     )!;
     const loc = containerId.scrollTop;
     let folders = server === "api" ? [...folderLists] : [...SSHfolderLists];
-    // let folders = updatedFolders.length
-    //   ? updatedFolders
-    //   : server === "api"
-    //   ? [...folderLists]
-    //   : [...SSHfolderLists];
     folders = folders.slice().sort((a, b) => a.length - b.length);
     // if a folder is deleted, remove from opened folders array
     if (filesExc.name.length) {
@@ -272,12 +280,23 @@ export default function useApi() {
 
   const deleteFiles = (server: "api" | "ssh" | "") => {
     const files = server === "api" ? selectedComponent : selectedSSHComponent;
+    const delID = Math.floor(Math.random() * 1000);
+    const controller = new AbortController();
+    setDelQ((prevState) => [
+      ...prevState,
+      {
+        id: delID,
+        name: files,
+        controller,
+      },
+    ]);
     axios
-      .post(URL + "/" + server + "/delete", {
+      .post(URL + "/modify/" + server + "-delete", {
         files,
         server_type: connectionType,
       })
       .then((response) => {
+        setDelQ((prevState) => prevState.filter((state) => state.id !== delID));
         if (response.status === 200) {
           if (server === "api")
             setFolderLists((prevState) =>
@@ -293,25 +312,31 @@ export default function useApi() {
           });
         }
       })
-      .catch((err) =>
+      .catch((err) => {
+        setDelQ((prevState) => prevState.filter((state) => state.id !== delID));
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
           color: "red",
           icon: <IconX />,
-        })
-      );
+        });
+      });
   };
 
-  const createFolder = (
+  const createFileFolder = (
+    createType: string,
     type: string,
     server: "api" | "ssh" | "",
     folderName: string
   ) => {
     let path = server === "api" ? selectedComponent : selectedSSHComponent;
     if (type === "file") path = path.split("/").slice(0, -1).join("/");
+    const postURL =
+      createType === "folder"
+        ? URL + "/modify/" + server + "-newfolder"
+        : URL + "/modify/" + server + "-newfile";
     axios
-      .post(URL + "/" + server + "/newfolder", {
+      .post(postURL, {
         folderName,
         path,
         server_type: connectionType,
@@ -335,7 +360,7 @@ export default function useApi() {
     fileData: string
   ) => {
     axios
-      .post(URL + "/" + server + "/editfile", {
+      .post(URL + "/modify/" + server + "-editfile", {
         filePath,
         fileData,
         server_type: connectionType,
@@ -358,7 +383,7 @@ export default function useApi() {
   ) => {
     const dest = sourceFile.split("/").slice(0, -1).join("/") + "/" + fileName;
     axios
-      .post(URL + "/" + server + "/rename", {
+      .post(URL + "/modify/" + server + "-rename", {
         fileName,
         sourceFile,
         server_type: connectionType,
@@ -391,7 +416,7 @@ export default function useApi() {
     destPath: string
   ) => {
     axios
-      .post(URL + "/" + server + "/move", {
+      .post(URL + "/modify/" + server + "-move", {
         sourceFile,
         destPath,
         server_type: connectionType,
@@ -430,7 +455,7 @@ export default function useApi() {
     const sourceFile =
       server === "api" ? selectedComponent : selectedSSHComponent;
     axios
-      .post(URL + "/" + server + "/properties", {
+      .post(URL + "/modify/" + server + "-properties", {
         sourceFile,
         server_type: connectionType,
       })
@@ -451,7 +476,7 @@ export default function useApi() {
     const path = selectedComponent;
     let error = "";
     await axios
-      .post(URL + "/api/changeMod", {
+      .post(URL + "'modify/api-hangeMod", {
         path,
         newMod,
       })
@@ -480,7 +505,7 @@ export default function useApi() {
     };
     axios
       .post(
-        URL + "/" + server + "/copy",
+        URL + "/copy_file/" + server + "-copy",
         {
           sourceFile,
           destPath: dest,
@@ -504,7 +529,7 @@ export default function useApi() {
           icon: <IconX />,
         });
         if (!err.response) {
-          axios.post(URL + "/abortcopy", {
+          axios.post(URL + "/copy_file/abort", {
             server,
             copyID,
           });
@@ -516,7 +541,7 @@ export default function useApi() {
     fetchApi,
     getChildren,
     deleteFiles,
-    createFolder,
+    createFileFolder,
     editFile,
     renameFile,
     moveFile,

@@ -140,15 +140,15 @@ const FoldersFilesComponent = ({
         variant={selectedComponent === files.path ? "light" : "subtle"}
         // variant="light"
         onClick={() => {
+          setRename(false);
           fillSelectedFolder();
           setSelectedComponent(files.path);
-          setRename(false);
         }}
         onContextMenu={(event: React.MouseEvent) => {
-          handleContextMenu(event);
-          fillSelectedFolder();
-          setSelectedComponent(files.path);
           setRename(false);
+          fillSelectedFolder();
+          handleContextMenu(event);
+          setSelectedComponent(files.path);
           document.getElementById("left-container")!.style.overflow = "hidden";
         }}
         //COMPONENT DRAG HANDLER

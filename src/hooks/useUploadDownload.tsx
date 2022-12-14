@@ -24,7 +24,7 @@ export default function useUploadDownload() {
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
   const [uploadQ, setUploadQ] = useRecoilState(uploadQState);
   const [downloadQ, setDownloadQ] = useRecoilState(downloadQState);
-  const [copyQ, setCopyQ] = useRecoilState(copyQState);
+  const copyQ = useRecoilValue(copyQState);
   const { reloadFiles } = useApi();
   //server type
   const connectionType = useRecoilValue(connectionTypeState);
@@ -73,7 +73,7 @@ export default function useUploadDownload() {
         );
       });
     }
-  }, [socket]);
+  }, [socket, setDownloadQ, setUploadQ]);
 
   // DOWNLOAD FILE
   const downloadFile = (
@@ -99,7 +99,7 @@ export default function useUploadDownload() {
     ]);
     axios
       .post(
-        URL + "/sftpget",
+        URL + "/transfer/download",
         {
           downloadID,
           sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
@@ -183,7 +183,7 @@ export default function useUploadDownload() {
     ]);
     axios
       .post(
-        URL + "/sftpput",
+        URL + "/transfer/upload",
         {
           uploadID,
           sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,

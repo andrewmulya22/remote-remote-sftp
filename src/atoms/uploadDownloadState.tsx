@@ -8,7 +8,7 @@ interface IProgress {
   controller: AbortController;
 }
 
-interface ICopyQ {
+interface ICopyDelQ {
   id: number;
   name: string;
   controller: AbortController;
@@ -25,7 +25,12 @@ export const downloadQState = atom<IProgress[]>({
   default: [],
 });
 
-export const copyQState = atom<ICopyQ[]>({
+export const copyQState = atom<ICopyDelQ[]>({
   key: "copyQState",
+  default: [],
+});
+
+export const delQState = atom<ICopyDelQ[]>({
+  key: "delQState",
   default: [],
 });

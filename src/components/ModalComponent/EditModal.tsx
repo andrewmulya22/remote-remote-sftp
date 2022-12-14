@@ -65,7 +65,7 @@ const EditModal = () => {
       axios
         .post(
           // process.env.REACT_APP_SERVER_URL +
-          URL + "/" + modalOpened.server + "/filedata",
+          URL + "/modify/" + modalOpened.server + "-filedata",
           {
             filePath:
               modalOpened.server === "api"
@@ -90,6 +90,7 @@ const EditModal = () => {
         });
     }
   }, [
+    URL,
     setValue,
     selectedComponent,
     selectedSSHComponent,

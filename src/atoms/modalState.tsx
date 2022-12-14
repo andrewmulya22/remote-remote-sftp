@@ -1,6 +1,7 @@
 import { atom } from "recoil";
 
-interface INewFolderModal {
+interface INewFileFolderModal {
+  createType: string;
   opened: boolean;
   type: string;
   server: "api" | "ssh" | "";
@@ -21,9 +22,10 @@ interface IProperties {
   atime: number;
 }
 
-export const newFolderModalState = atom<INewFolderModal>({
-  key: "newFolderModalState",
+export const newFileFolderModalState = atom<INewFileFolderModal>({
+  key: "newFileFolderModalState",
   default: {
+    createType: "",
     opened: false,
     type: "",
     server: "",

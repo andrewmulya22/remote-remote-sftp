@@ -47,7 +47,7 @@ export default function useLogin() {
     if (host !== URL) {
       axios({
         method: "post",
-        url: host + "/api_login",
+        url: host + "/login/api",
         timeout: 5000,
         data: {
           host,
@@ -84,6 +84,7 @@ export default function useLogin() {
 
   useEffect(() => {
     if (URL) fetchApi("api");
+    // eslint-disable-next-line
   }, [URL]);
 
   const ssh_login_handler = (
@@ -91,7 +92,8 @@ export default function useLogin() {
     port: string | null,
     host: string,
     username: string,
-    password: string
+    password: string | null,
+    PKEY: File | null
   ) => {
     if (!file.length) {
       showNotification({
@@ -103,19 +105,23 @@ export default function useLogin() {
       return;
     }
     const hostname = /^\w+:\/\//i.test(host)
-      ? host.match(/^\w+:\/\/([^\/]+)\/?$/i)![1]
+      ? // eslint-disable-next-line
+        host.match(/^\w+:\/\/([^\/]+)\/?$/i)![1]
       : host;
+    //append formData
+    let formData = new FormData();
+    formData.append("server_type", server_type);
+    formData.append("host", hostname);
+    formData.append("username", username);
+    formData.append("port", port ? port : "");
+    password && formData.append("password", password);
+    PKEY && formData.append("pkfile", PKEY);
+
     axios({
       method: "post",
-      url: URL + "/ssh_login",
+      url: URL + "/login/ssh",
       timeout: 5000,
-      data: {
-        server_type,
-        port,
-        host: hostname,
-        username,
-        password,
-      },
+      data: formData,
     })
       .then((response) => {
         if (response.status === 200) {

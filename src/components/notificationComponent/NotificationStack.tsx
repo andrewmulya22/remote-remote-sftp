@@ -1,17 +1,20 @@
 import { createStyles } from "@mantine/core";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import {
   copyQState,
+  delQState,
   downloadQState,
   uploadQState,
 } from "../../atoms/uploadDownloadState";
 import NotificationComponent from "./NotificationComponent";
 
-export default function NotificationStack() {
+const NotificationStack = () => {
   const { classes } = useStyles();
   const downloadQ = useRecoilValue(downloadQState);
   const uploadQ = useRecoilValue(uploadQState);
   const copyQ = useRecoilValue(copyQState);
+  const delQ = useRecoilValue(delQState);
   return (
     <div className={classes.containerStyle}>
       {[...downloadQ].map((download) => (
@@ -41,9 +44,18 @@ export default function NotificationStack() {
           progress={0}
         />
       ))}
+      {[...delQ].map((del) => (
+        <NotificationComponent
+          key={del.id}
+          id={del.id}
+          type="delete"
+          name={del.name}
+          progress={0}
+        />
+      ))}
     </div>
   );
-}
+};
 
 const useStyles = createStyles(() => ({
   containerStyle: {
@@ -53,3 +65,5 @@ const useStyles = createStyles(() => ({
     left: "5vw",
   },
 }));
+
+export default React.memo(NotificationStack);

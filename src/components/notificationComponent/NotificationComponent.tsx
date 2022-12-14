@@ -22,7 +22,7 @@ export default function NotificationComponent({
       color={
         type === "download" ? "blue" : type === "upload" ? "green" : "dark"
       }
-      loading={type === "copy"}
+      loading={type === "copy" || type === "delete"}
       title={type.toLocaleUpperCase()}
       style={{
         // display: !showState ? "none" : "",

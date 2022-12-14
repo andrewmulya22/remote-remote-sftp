@@ -7,13 +7,6 @@ import FoldersFilesRightComponent from "./FoldersFilesRightComponent";
 const RightContainer = () => {
   const { classes } = useStyles();
   const SSHFiles = useRecoilValue(SSHFilesState);
-  // const { fetchApi } = useApi();
-
-  // useEffect(() => {
-  //   fetchApi("ssh");
-  //   // eslint-disable-next-line
-  // }, []);
-
   return (
     <div className={classes.container} id="right-container">
       {SSHFiles.sort((a, b) => b.type.localeCompare(a.type)).map((file) => (
