@@ -7,7 +7,13 @@ import {
   Text,
 } from "@mantine/core";
 import axios from "axios";
-import React, { useEffect, useReducer, useRef, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../../atoms/apiServerState";
 import { changeModState } from "../../atoms/modalState";
@@ -17,6 +23,7 @@ import {
   unixModeToBoolConverter,
   unixModeOperator,
 } from "../../helpers/formatter";
+import { SocketContext } from "../../context/Socket";
 
 interface checkboxState {
   owner: boolean[];
@@ -69,14 +76,25 @@ const ChangeModModal = () => {
   const newPermRef = useRef<HTMLInputElement>(null);
   const { changePerm } = useApi();
 
+  //socket
+  const socket = useContext(SocketContext);
+
   useEffect(() => {
     if (modal) {
       setDefValue("");
       setError("");
       axios
-        .post(URL + "/api/properties", {
-          sourceFile: selectedComponent,
-        })
+        .post(
+          URL + "/modify/api-properties",
+          {
+            sourceFile: selectedComponent,
+          },
+          {
+            params: {
+              socketID: socket?.id,
+            },
+          }
+        )
         .then((resp) => {
           setDefValue(resp.data.mode.slice(-3));
           onLostFocusInput(resp.data.mode.slice(-3));

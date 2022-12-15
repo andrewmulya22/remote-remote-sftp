@@ -3,7 +3,7 @@ import { Notification } from "@mantine/core";
 import useUploadDownload from "../../hooks/useUploadDownload";
 
 interface Props {
-  id: number;
+  id: string;
   type: string;
   name: string;
   progress: number;

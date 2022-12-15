@@ -7,7 +7,7 @@ import {
   Paper,
 } from "@mantine/core";
 import axios from "axios";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectedComponentState } from "../../atoms/apiServerState";
 import { editModalState } from "../../atoms/modalState";
@@ -18,6 +18,7 @@ import {
 import useApi from "../../hooks/useApi";
 import "./ModalStyle.css";
 import { URLState } from "../../atoms/URLState";
+import { SocketContext } from "../../context/Socket";
 
 const EditModal = () => {
   //modal management
@@ -38,6 +39,9 @@ const EditModal = () => {
   const selectedSSHComponent = useRecoilValue(selectedSSHComponentState);
 
   const connectionType = useRecoilValue(connectionTypeState);
+
+  //socket
+  const socket = useContext(SocketContext);
 
   //edit file API call
   const { editFile } = useApi();
@@ -72,6 +76,11 @@ const EditModal = () => {
                 ? selectedComponent
                 : selectedSSHComponent,
             server_type: connectionType,
+          },
+          {
+            params: {
+              socketID: socket?.id,
+            },
           }
         )
         .then((resp) => {

@@ -1,6 +1,6 @@
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
-from flask import Flask
+from flask import Flask, request
 import functools
 import time
 import config
@@ -31,6 +31,11 @@ def login_required(f):
     return wrapper
 
 # Socket Transfer
+
+
+@socketio.on('connect')
+def manage_connect():
+    config.login_state[f"{request.sid}"] = True
 
 
 @socketio.on('transferProgress')
@@ -71,6 +76,13 @@ def abortOperations(data):
     if type == "upload":
         config.upload_sftps[f"{data['transferID']}"].close()
     return "OK", 200
+
+
+@socketio.on('ftpKeepAlive')
+def ftp_keep_alive():
+    while request.sid in config.ftp_host:
+        time.sleep(60)
+        config.ftp_host[f"{request.sid}"].keep_alive()
 
 
 if __name__ == '__main__':

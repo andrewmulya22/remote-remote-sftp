@@ -1,3 +1,5 @@
+import { showNotification } from "@mantine/notifications";
+import { IconX } from "@tabler/icons";
 import React, { useEffect, useState, createContext, ReactNode } from "react";
 import { useRecoilValue } from "recoil";
 import socketIO, { Socket } from "socket.io-client";
@@ -12,10 +14,15 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (URL)
       try {
-        const socketConnection = socketIO("http://localhost:5000");
+        const socketConnection = socketIO(URL);
         setConnection(socketConnection);
       } catch (err) {
-        console.log(err);
+        showNotification({
+          title: "Connection Error",
+          message: "Cant connect to server",
+          color: "red",
+          icon: <IconX />,
+        });
       }
   }, [URL]);
 

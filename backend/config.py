@@ -2,10 +2,13 @@
 
 import ftputil
 import paramiko
+from typing import Dict
 
-login_state = False
-ftp_host: ftputil.FTPHost = None
-sftp_host: paramiko.SFTPClient = None
+login_state : dict[str, bool] = {}
+ftp_host: dict[str, ftputil.FTPHost] = {}
+sftp_host: dict[str, paramiko.SFTPClient] = {}
+# ftp_host: ftputil.FTPHost = None
+# sftp_host: paramiko.SFTPClient = None
 
 default_path_api = "/"
 default_path_ssh = "/"

@@ -127,11 +127,12 @@ def newFile():
 
 @modify.route('/ssh-delete', methods=['POST'])
 def ssh_delete():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     try:
         sftp = paramiko.SFTPClient.from_transport(
-            config.sftp_host) if content['server_type'] == "sftp" else None
-        deleteHandler(content['files'], content['server_type'], sftp)
+            config.sftp_host[f"{socketID}"]) if content['server_type'] == "sftp" else None
+        deleteHandler(content['files'], content['server_type'], sftp, socketID)
         if sftp is not None:
             sftp.close()
         return "OK", 200
@@ -139,37 +140,41 @@ def ssh_delete():
         return f"{e}", 500
 
 
-def deleteHandler(path, server_type, sftp):
+def deleteHandler(path, server_type, sftp, socketID):
     if server_type == "sftp":
         dir_check = stat.S_ISDIR(sftp.stat(path).st_mode)
         if dir_check:
             for x in sftp.listdir(path):
-                deleteHandler(os.path.join(path, x), server_type, sftp)
+                deleteHandler(os.path.join(path, x),
+                              server_type, sftp, socketID)
             sftp.rmdir(path)
         else:
             sftp.remove(path)
     elif server_type == "ftp":
-        dir_check = config.ftp_host.path.isdir(path)
+        dir_check = config.ftp_host[f"{socketID}"].path.isdir(path)
         if dir_check:
-            for x in config.ftp_host.listdir(path):
-                deleteHandler(os.path.join(path, x), server_type, sftp)
-            config.ftp_host.rmdir(path)
+            for x in config.ftp_host[f"{socketID}"].listdir(path):
+                deleteHandler(os.path.join(path, x),
+                              server_type, sftp, socketID)
+            config.ftp_host[f"{socketID}"].rmdir(path)
         else:
-            config.ftp_host.remove(path)
+            config.ftp_host[f"{socketID}"].remove(path)
 
 
 @modify.route('/ssh-newfolder', methods=['POST'])
 def ssh_newfolder():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     folderName = os.path.join(content["path"], content["folderName"])
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             sftp.mkdir(folderName)
             sftp.close()
         elif server_type == "ftp":
-            config.ftp_host.mkdir(folderName)
+            config.ftp_host[f"{socketID}"].mkdir(folderName)
         return "OK"
     except Exception as e:
         return f"{e}", 500
@@ -177,6 +182,7 @@ def ssh_newfolder():
 
 @modify.route('/ssh-rename', methods=['POST'])
 def ssh_rename():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     sourceFile = content["sourceFile"]
@@ -185,11 +191,12 @@ def ssh_rename():
     if sourceFile != fileName:
         try:
             if server_type == "sftp":
-                sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+                sftp = paramiko.SFTPClient.from_transport(
+                    config.sftp_host[f"{socketID}"])
                 sftp.rename(sourceFile, fileName)
                 sftp.close()
             elif server_type == "ftp":
-                config.ftp_host.rename(sourceFile, fileName)
+                config.ftp_host[f"{socketID}"].rename(sourceFile, fileName)
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -198,6 +205,7 @@ def ssh_rename():
 
 @modify.route('/ssh-move', methods=['POST'])
 def ssh_move():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     sourceFile = content["sourceFile"]
@@ -205,11 +213,12 @@ def ssh_move():
     fileName = os.path.basename(sourceFile)
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             sftp.rename(sourceFile, os.path.join(destPath, fileName))
             sftp.close()
         elif server_type == "ftp":
-            config.ftp_host.rename(
+            config.ftp_host[f"{socketID}"].rename(
                 sourceFile, os.path.join(destPath, fileName))
         return "OK"
     except Exception as e:
@@ -218,17 +227,19 @@ def ssh_move():
 
 @modify.route('/ssh-newfile', methods=['POST'])
 def ssh_newFile():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             f = sftp.open(os.path.join(
                 content['path'], content['folderName']), 'a')
             f.flush()
             sftp.close()
         elif server_type == "ftp":
-            f = config.ftp_host.open(os.path.join(
+            f = config.ftp_host[f"{socketID}"].open(os.path.join(
                 content['path'], content['folderName']), 'w')
             f.close()
         return "OK", 200
@@ -239,18 +250,20 @@ def ssh_newFile():
 
 @modify.route('/ssh-filedata', methods=['POST'])
 def ssh_filedata():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             f = sftp.open(content['filePath'], 'r')
             filedata = f.read()
             f.close()
             sftp.close()
             return filedata, 200
         elif server_type == "ftp":
-            f = config.ftp_host.open(content['filePath'], 'r')
+            f = config.ftp_host[f"{socketID}"].open(content['filePath'], 'r')
             filedata = f.read()
             f.close()
             return filedata, 200
@@ -260,17 +273,19 @@ def ssh_filedata():
 
 @modify.route('/ssh-editfile', methods=['POST'])
 def ssh_editfile():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             f = sftp.open(content['filePath'], 'w')
             f.write(content['fileData'])
             f.close()
             sftp.close()
         elif server_type == "ftp":
-            f = config.ftp_host.open(content['filePath'], 'w')
+            f = config.ftp_host[f"{socketID}"].open(content['filePath'], 'w')
             f.write(content['fileData'])
             f.close()
         return "OK", 200
@@ -280,12 +295,13 @@ def ssh_editfile():
 
 @modify.route('/ssh-properties', methods=['POST'])
 def ssh_properties():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     try:
         server_type = content['server_type']
         sftp = paramiko.SFTPClient.from_transport(
-            config.sftp_host) if server_type == "sftp" else None
-        filestat = sftp.stat(content['sourceFile']) if server_type == "sftp" else config.ftp_host.stat(
+            config.sftp_host[f"{socketID}"]) if server_type == "sftp" else None
+        filestat = sftp.stat(content['sourceFile']) if server_type == "sftp" else config.ftp_host[f"{socketID}"].stat(
             content['sourceFile'])
         if sftp is not None:
             sftp.close()

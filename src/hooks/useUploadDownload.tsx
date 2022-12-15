@@ -83,7 +83,9 @@ export default function useUploadDownload() {
     if (!sourceFile && selectedAPIFile === "") return;
     let downloadDone = false;
     let downloadSuccess = true;
-    const downloadID = Math.floor(Math.random() * 100000);
+    const downloadID = `${socket!.id}-${Math.floor(
+      Math.random() * 100000
+    ).toString()}`;
     //controller
     const controller = new AbortController();
     //initialize download state
@@ -107,6 +109,9 @@ export default function useUploadDownload() {
           server_type: connectionType,
         },
         {
+          params: {
+            socketID: socket?.id,
+          },
           signal: controller.signal,
         }
       )
@@ -168,7 +173,9 @@ export default function useUploadDownload() {
     if (!sourceFile && selectedSSHFile === "") return;
     let uploadDone = false;
     let uploadSuccess = true;
-    const uploadID = Math.floor(Math.random() * 100000);
+    const uploadID = `${socket!.id}-${Math.floor(
+      Math.random() * 100000
+    ).toString()}`;
     //controller
     const controller = new AbortController();
     setUploadQ((prevState) => [
@@ -191,6 +198,9 @@ export default function useUploadDownload() {
           server_type: connectionType,
         },
         {
+          params: {
+            socketID: socket?.id,
+          },
           signal: controller.signal,
         }
       )
@@ -246,7 +256,7 @@ export default function useUploadDownload() {
     }, 1000);
   };
 
-  const abortTransfer = (type: "download" | "upload" | "copy", id: number) => {
+  const abortTransfer = (type: "download" | "upload" | "copy", id: string) => {
     if (type === "download") {
       const downloadController = downloadQ.find(
         (controller) => controller.id === id

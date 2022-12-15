@@ -1,7 +1,7 @@
 import { atom } from "recoil";
 
 interface IProgress {
-  id: number;
+  id: string;
   name: string;
   progress: number;
   errorCount: number;
@@ -9,7 +9,7 @@ interface IProgress {
 }
 
 interface ICopyDelQ {
-  id: number;
+  id: string;
   name: string;
   controller: AbortController;
 }

@@ -1,5 +1,5 @@
 import axios from "axios";
-import React from "react";
+import React, { useContext } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import {
   clipboardState,
@@ -21,6 +21,7 @@ import { IconX } from "@tabler/icons";
 import { URLState } from "../atoms/URLState";
 import { propertiesDataState, propertiesModalState } from "../atoms/modalState";
 import { copyQState, delQState } from "../atoms/uploadDownloadState";
+import { SocketContext } from "../context/Socket";
 
 interface IChildren {
   type: string;
@@ -67,6 +68,9 @@ export default function useApi() {
   //SFTP or FTP
   const connectionType = useRecoilValue(connectionTypeState);
 
+  //socket
+  const socket = useContext(SocketContext);
+
   //FUNCTIONS
   const fetchApi = (
     server: "api" | "ssh" | "",
@@ -77,6 +81,7 @@ export default function useApi() {
     axios
       .get(URL + "/files/" + server, {
         params: {
+          socketID: socket?.id,
           server_type,
         },
       })
@@ -110,10 +115,18 @@ export default function useApi() {
   const getChildren = async (server: "api" | "ssh" | "", dirPath: string) => {
     return new Promise((resolve, reject) => {
       axios
-        .post(URL + "/files/" + server + "-children", {
-          path: dirPath,
-          server_type: connectionType,
-        })
+        .post(
+          URL + "/files/" + server + "-children",
+          {
+            path: dirPath,
+            server_type: connectionType,
+          },
+          {
+            params: {
+              socketID: socket?.id,
+            },
+          }
+        )
         .then((response) => {
           // for api server
           if (server === "api")
@@ -280,7 +293,9 @@ export default function useApi() {
 
   const deleteFiles = (server: "api" | "ssh" | "") => {
     const files = server === "api" ? selectedComponent : selectedSSHComponent;
-    const delID = Math.floor(Math.random() * 1000);
+    const delID = `${socket!.id}-${Math.floor(
+      Math.random() * 100000
+    ).toString()}`;
     const controller = new AbortController();
     setDelQ((prevState) => [
       ...prevState,
@@ -291,10 +306,18 @@ export default function useApi() {
       },
     ]);
     axios
-      .post(URL + "/modify/" + server + "-delete", {
-        files,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/modify/" + server + "-delete",
+        {
+          files,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .then((response) => {
         setDelQ((prevState) => prevState.filter((state) => state.id !== delID));
         if (response.status === 200) {
@@ -336,11 +359,19 @@ export default function useApi() {
         ? URL + "/modify/" + server + "-newfolder"
         : URL + "/modify/" + server + "-newfile";
     axios
-      .post(postURL, {
-        folderName,
-        path,
-        server_type: connectionType,
-      })
+      .post(
+        postURL,
+        {
+          folderName,
+          path,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .then((response) => {
         if (response.status === 200) reloadFiles(server);
       })
@@ -360,11 +391,19 @@ export default function useApi() {
     fileData: string
   ) => {
     axios
-      .post(URL + "/modify/" + server + "-editfile", {
-        filePath,
-        fileData,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/modify/" + server + "-editfile",
+        {
+          filePath,
+          fileData,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .catch((err) =>
         showNotification({
           title: `Error ${err.response.status}`,
@@ -383,11 +422,19 @@ export default function useApi() {
   ) => {
     const dest = sourceFile.split("/").slice(0, -1).join("/") + "/" + fileName;
     axios
-      .post(URL + "/modify/" + server + "-rename", {
-        fileName,
-        sourceFile,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/modify/" + server + "-rename",
+        {
+          fileName,
+          sourceFile,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .then((response) => {
         if (response.status === 200) {
           if (type === "folder")
@@ -416,11 +463,19 @@ export default function useApi() {
     destPath: string
   ) => {
     axios
-      .post(URL + "/modify/" + server + "-move", {
-        sourceFile,
-        destPath,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/modify/" + server + "-move",
+        {
+          sourceFile,
+          destPath,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .then((response) => {
         if (response.status === 200) {
           if (server === "api")
@@ -455,10 +510,18 @@ export default function useApi() {
     const sourceFile =
       server === "api" ? selectedComponent : selectedSSHComponent;
     axios
-      .post(URL + "/modify/" + server + "-properties", {
-        sourceFile,
-        server_type: connectionType,
-      })
+      .post(
+        URL + "/modify/" + server + "-properties",
+        {
+          sourceFile,
+          server_type: connectionType,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .then((resp) =>
         setPropertiesData({
           name: resp.data.name,
@@ -476,10 +539,18 @@ export default function useApi() {
     const path = selectedComponent;
     let error = "";
     await axios
-      .post(URL + "'modify/api-hangeMod", {
-        path,
-        newMod,
-      })
+      .post(
+        URL + "'modify/api-hangeMod",
+        {
+          path,
+          newMod,
+        },
+        {
+          params: {
+            socketID: socket?.id,
+          },
+        }
+      )
       .catch((err) => {
         error = err.response.data;
       });
@@ -489,7 +560,9 @@ export default function useApi() {
   const pasteFile = (server: "api" | "ssh" | "") => {
     const sourceFile = server === "api" ? clipboard : SSHClipboard;
     const dest = server === "api" ? selectedComponent : selectedSSHComponent;
-    const copyID = Math.floor(Math.random() * 1000);
+    const copyID = `${socket!.id}-${Math.floor(
+      Math.random() * 100000
+    ).toString()}`;
     //controller
     const controller = new AbortController();
     setCopyQ((prevState) => [
@@ -500,7 +573,7 @@ export default function useApi() {
         controller: controller,
       },
     ]);
-    const removeFromQ = (id: number) => {
+    const removeFromQ = (id: string) => {
       setCopyQ((prevState) => prevState.filter((state) => state.id !== id));
     };
     axios
@@ -513,6 +586,9 @@ export default function useApi() {
           copyID,
         },
         {
+          params: {
+            socketID: socket?.id,
+          },
           signal: controller.signal,
         }
       )
@@ -529,10 +605,18 @@ export default function useApi() {
           icon: <IconX />,
         });
         if (!err.response) {
-          axios.post(URL + "/copy_file/abort", {
-            server,
-            copyID,
-          });
+          axios.post(
+            URL + "/copy_file/abort",
+            {
+              server,
+              copyID,
+            },
+            {
+              params: {
+                socketID: socket?.id,
+              },
+            }
+          );
         }
       });
   };

@@ -51,7 +51,7 @@ def path_to_dict_ssh(path, sftp):
     return d
 
 
-def path_to_dict_ftp(path):
+def path_to_dict_ftp(path, socketID):
     if(path == "/" or path == ""):
         d = {'name': "/"}
     else:
@@ -59,10 +59,10 @@ def path_to_dict_ftp(path):
     d['path'] = os.path.abspath(path)
     # file data
     try:
-        d['modified'] = config.ftp_host.path.getmtime(path)
+        d['modified'] = config.ftp_host[f"{socketID}"].path.getmtime(path)
     except:
         d['modified'] = None
-    if config.ftp_host.path.isdir(path):
+    if config.ftp_host[f"{socketID}"].path.isdir(path):
         d['type'] = "folder"
         d['size'] = 0
         d['children'] = []
@@ -71,7 +71,7 @@ def path_to_dict_ftp(path):
         d['type'] = "file"
         d['mimetype'] = mimetypes.guess_type(path)
         try:
-            d['size'] = config.ftp_host.path.getsize(path)
+            d['size'] = config.ftp_host[f"{socketID}"].path.getsize(path)
         except:
             d['size'] = 0
     return d
@@ -79,32 +79,27 @@ def path_to_dict_ftp(path):
 
 @files.route('/api', methods=['GET'])
 def api():
+    socketID = request.args.get('socketID')
     data = [path_to_dict(config.default_path_api)]
-    # response = files.response_class(
-    #     response=json.dumps(data),
-    #     mimetype='application/json'
-    # )
     return json.dumps(data)
 
 
 @files.route('/ssh', methods=['GET'])
 def ssh():
+    socketID = request.args.get('socketID')
     server_type = request.args.get('server_type')
     data = []
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             data = [path_to_dict_ssh(config.default_path_ssh, sftp)]
             sftp.close()
         elif server_type == "ftp":
             try:
-                data = [path_to_dict_ftp("/")]
+                data = [path_to_dict_ftp("/", socketID)]
             except:
-                data = [path_to_dict_ftp("/home/")]
-        # response = files.response_class(
-        #     response=json.dumps(data),
-        #     mimetype='application/json'
-        # )
+                data = [path_to_dict_ftp("/home/", socketID)]
         return json.dumps(data)
     except Exception as e:
         return f"{e}", 500
@@ -120,10 +115,6 @@ def api_children():
                 children.append(path_to_dict(os.path.join(content['path'], x)))
             except:
                 continue
-        # response = files.response_class(
-        #     response=json.dumps(children),
-        #     mimetype='application/json'
-        # )
         return json.dumps(children)
     except Exception as e:
         return f"{e}", 500
@@ -131,12 +122,14 @@ def api_children():
 
 @files.route('/ssh-children', methods=['POST'])
 def ssh_children():
+    socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
     children = []
     try:
         if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(config.sftp_host)
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
             for x in sftp.listdir(content['path']):
                 try:
                     children.append(path_to_dict_ssh(
@@ -145,16 +138,12 @@ def ssh_children():
                     continue
             sftp.close()
         elif server_type == "ftp":
-            for x in config.ftp_host.listdir(content['path']):
+            for x in config.ftp_host[f"{socketID}"].listdir(content['path']):
                 try:
                     children.append(path_to_dict_ftp(
-                        os.path.join(content['path'], x)))
+                        os.path.join(content['path'], x), socketID))
                 except Exception as e:
                     continue
-        # response = files.response_class(
-        #     response=json.dumps(children),
-        #     mimetype='application/json'
-        # )
         return json.dumps(children)
     except Exception as e:
         return f"{e}", 500

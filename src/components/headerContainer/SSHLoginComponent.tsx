@@ -6,12 +6,10 @@ import {
   Input,
   NativeSelect,
   PasswordInput,
-  Stack,
   Text,
 } from "@mantine/core";
 import { showNotification } from "@mantine/notifications";
 import { IconKey, IconRefresh, IconX } from "@tabler/icons";
-import axios from "axios";
 import React, { useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SSHAuthState } from "../../atoms/sshServerState";

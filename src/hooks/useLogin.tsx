@@ -18,10 +18,12 @@ import {
   folderListsState,
   selectedFolderState,
 } from "../atoms/apiServerState";
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
+import { SocketContext } from "../context/Socket";
 
 export default function useLogin() {
   const { fetchApi } = useApi();
+  const socket = useContext(SocketContext);
   //file states
   const [file, setFile] = useRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
@@ -122,6 +124,9 @@ export default function useLogin() {
       url: URL + "/login/ssh",
       timeout: 5000,
       data: formData,
+      params: {
+        socketID: socket?.id,
+      },
     })
       .then((response) => {
         if (response.status === 200) {
@@ -131,6 +136,8 @@ export default function useLogin() {
           setSSHFolderLists([]);
           setSelectedSSHFolder("");
           setSSHClipboard("");
+          // keep alive FTP
+          if (server_type === "ftp") socket?.emit("ftpKeepAlive");
         }
       })
       .catch((err) => {
