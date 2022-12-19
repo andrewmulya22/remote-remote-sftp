@@ -80,7 +80,7 @@ export default function useUploadDownload() {
     sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (!sourceFile && selectedAPIFile === "") return;
+    if (!sourceFile && !selectedAPIFile) return;
     let downloadDone = false;
     let downloadSuccess = true;
     const downloadID = `${socket!.id}-${Math.floor(
@@ -170,7 +170,7 @@ export default function useUploadDownload() {
     sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (!sourceFile && selectedSSHFile === "") return;
+    if (!sourceFile && !selectedSSHFile) return;
     let uploadDone = false;
     let uploadSuccess = true;
     const uploadID = `${socket!.id}-${Math.floor(

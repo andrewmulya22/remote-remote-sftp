@@ -253,22 +253,22 @@ def ssh_filedata():
     socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
-    try:
-        if server_type == "sftp":
-            sftp = paramiko.SFTPClient.from_transport(
-                config.sftp_host[f"{socketID}"])
-            f = sftp.open(content['filePath'], 'r')
-            filedata = f.read()
-            f.close()
-            sftp.close()
-            return filedata, 200
-        elif server_type == "ftp":
-            f = config.ftp_host[f"{socketID}"].open(content['filePath'], 'r')
-            filedata = f.read()
-            f.close()
-            return filedata, 200
-    except Exception as e:
-        return f"{e}", 500
+    # try:
+    if server_type == "sftp":
+        sftp = paramiko.SFTPClient.from_transport(
+            config.sftp_host[f"{socketID}"])
+        f = sftp.open(content['filePath'], 'r')
+        filedata = f.read()
+        f.close()
+        sftp.close()
+        return filedata, 200
+    elif server_type == "ftp":
+        f = config.ftp_host[f"{socketID}"].open(content['filePath'], 'r')
+        filedata = f.read()
+        f.close()
+        return filedata, 200
+    # except Exception as e:
+    #     return f"{e}", 500
 
 
 @modify.route('/ssh-editfile', methods=['POST'])

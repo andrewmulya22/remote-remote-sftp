@@ -43,12 +43,12 @@ export const selectedSSHFolderState = atom<string>({
   default: "",
 });
 
-export const selectedSSHComponentState = atom<string>({
+export const selectedSSHComponentState = atom<string[]>({
   key: "selectedSSHComponentState",
-  default: "",
+  default: [],
 });
 
-export const SSHClipboardState = atom<string>({
+export const SSHClipboardState = atom<string[]>({
   key: "SSHClipboardState",
-  default: "",
+  default: [],
 });

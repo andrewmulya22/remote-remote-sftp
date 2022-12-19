@@ -54,6 +54,7 @@ def ssh_copy():
     if server_type != "ftp":
         return "Operation not supported", 500
     try:
+        print(content['sourceFile'], content['destPath'])
         SSHCopyHandler(socketID, copyID,
                        content['sourceFile'], content['destPath'])
         if copyID in config.copy_lists:
@@ -71,12 +72,16 @@ def SSHCopyHandler(socketID, copyID, src, dst):
     dest_path = dst if config.ftp_host[f"{socketID}"].path.isdir(
         dst) else os.path.dirname(dst)
     if not config.ftp_host[f"{socketID}"].path.isdir(src):
+        if os.path.dirname(src) == dst:
+            raise Exception(f"{src} and {src} are the same file")
         with config.ftp_host[f"{socketID}"].open(src, "rb") as source:
             with config.ftp_host[f"{socketID}"].open(os.path.join(
                     dest_path, os.path.basename(src)), "wb") as target:
                 # ftp_host.copyfileobj(source, target)
                 interruptable_copy(socketID, copyID, "ssh", source, target)
     else:
+        if src == dst:
+            raise Exception(f"{src} and {dst} are the same file")
         # create folder
         newPath = os.path.join(dest_path, os.path.basename(src))
         if not config.ftp_host[f"{socketID}"].path.exists(newPath):

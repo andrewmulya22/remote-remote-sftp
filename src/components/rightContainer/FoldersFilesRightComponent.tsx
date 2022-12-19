@@ -115,7 +115,8 @@ const FoldersFilesRightComponent = ({
       files.path !== sourcefile &&
       sourcefile.split("/").slice(0, -1).join("/") !== files.path
     )
-      moveFile("ssh", sourcefile, files.path);
+      moveFile("ssh", files.path);
+    // moveFile("ssh", sourcefile, files.path);
   };
 
   //add scroll back when context menu is off
@@ -123,6 +124,18 @@ const FoldersFilesRightComponent = ({
     if (!show)
       document.getElementById("right-container")!.style.overflow = "auto";
   }, [show]);
+
+  const contextMenuClickHandler = () => {
+    if (
+      !selectedComponent.filter((component) => component === files.path).length
+    )
+      setSelectedComponent([files.path]);
+    else
+      setSelectedComponent((prevState) => [
+        ...prevState.filter((state) => state !== files.path),
+        files.path,
+      ]);
+  };
 
   //render
   return (
@@ -140,27 +153,38 @@ const FoldersFilesRightComponent = ({
       )}
       <Button
         className={[classes.container, "folderButton"].join(" ")}
-        variant={selectedComponent === files.path ? "light" : "subtle"}
-        onClick={() => {
+        variant={
+          selectedComponent.filter((component) => component === files.path)
+            .length
+            ? "light"
+            : "subtle"
+        }
+        onClick={(e: React.MouseEvent) => {
           setRename(false);
           fillSelectedFolder();
-          setSelectedComponent(files.path);
+          if (e.shiftKey) {
+            setSelectedComponent((prevState) => [
+              ...prevState.filter((state) => state !== files.path),
+              files.path,
+            ]);
+          } else setSelectedComponent([files.path]);
         }}
         onContextMenu={(event: React.MouseEvent) => {
           setRename(false);
           fillSelectedFolder();
           handleContextMenu(event);
-          setSelectedComponent(files.path);
+          contextMenuClickHandler();
           document.getElementById("right-container")!.style.overflow = "hidden";
         }}
         //COMPONENT DRAG HANDLER
         draggable
-        onDragStart={(event: React.DragEvent) => {
-          event.dataTransfer.setData("filetype", files.type);
-          event.dataTransfer.setData("filepath", files.path);
-          event.dataTransfer.setData("server", "ssh");
+        onDragStart={(e: React.DragEvent) => {
+          contextMenuClickHandler();
+          e.dataTransfer.setData("filetype", files.type);
+          e.dataTransfer.setData("filepath", files.path);
+          e.dataTransfer.setData("server", "ssh");
         }}
-        onDragOver={(event: React.DragEvent) => event.preventDefault()}
+        onDragOver={(e: React.DragEvent) => e.preventDefault()}
         onDrop={onDropHandler}
       >
         <div
@@ -184,7 +208,7 @@ const FoldersFilesRightComponent = ({
           ) : (
             <IconFile color="pink" />
           )}
-          {rename && files.path === selectedComponent ? (
+          {rename && files.path === selectedComponent.at(-1) ? (
             <TextInput
               size="xs"
               onBlur={() => renameHandler()}

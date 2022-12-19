@@ -64,13 +64,13 @@ export default function useLogin() {
             setURL(host);
             setFolderLists([]);
             setSelectedFolder("");
-            setClipboard("");
+            setClipboard([]);
             //reset SSH states
             setSSHFile([]);
             setSSHAuth(false);
             setSSHFolderLists([]);
             setSelectedSSHFolder("");
-            setSSHClipboard("");
+            setSSHClipboard([]);
           }
         })
         .catch((err) => {
@@ -135,7 +135,7 @@ export default function useLogin() {
           setSSHAuth(true);
           setSSHFolderLists([]);
           setSelectedSSHFolder("");
-          setSSHClipboard("");
+          setSSHClipboard([]);
           // keep alive FTP
           if (server_type === "ftp") socket?.emit("ftpKeepAlive");
         }

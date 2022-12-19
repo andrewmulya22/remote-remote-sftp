@@ -22,7 +22,7 @@ const SSHLoginComponent = () => {
 
   const [checkboxVal, setCheckboxVal] = useState<boolean>(false);
   //ssh ref
-  const SERVERSELECT = useRef<HTMLSelectElement>(null);
+  const [SERVERSELECT, setSERVERSELECT] = useState("sftp");
   const SSHPORT = useRef<HTMLInputElement>(null);
   const SSHHOST = useRef<HTMLInputElement>(null);
   const SSHUSERNAME = useRef<HTMLInputElement>(null);
@@ -33,14 +33,13 @@ const SSHLoginComponent = () => {
   const ssh_login = (e: React.FormEvent) => {
     e.preventDefault();
     const portNum = SSHPORT.current ? SSHPORT.current.value : null;
-    if (SERVERSELECT.current && SSHHOST.current && SSHUSERNAME.current) {
+    if (SERVERSELECT && SSHHOST.current && SSHUSERNAME.current) {
       if (
-        (SERVERSELECT.current.value === "sftp" &&
-          (SSHPASSWORD.current?.value || PKEY)) ||
-        (SERVERSELECT.current.value === "ftp" && SSHPASSWORD.current?.value)
+        (SERVERSELECT === "sftp" && (SSHPASSWORD.current?.value || PKEY)) ||
+        (SERVERSELECT === "ftp" && SSHPASSWORD.current?.value)
       )
         ssh_login_handler(
-          SERVERSELECT.current.value,
+          SERVERSELECT,
           portNum,
           SSHHOST.current.value,
           SSHUSERNAME.current.value,
@@ -57,7 +56,7 @@ const SSHLoginComponent = () => {
     }
   };
 
-  const serverSelect = [
+  const serverSelectData = [
     { value: "sftp", label: "SFTP" },
     { value: "ftp", label: "FTP" },
   ];
@@ -71,8 +70,9 @@ const SSHLoginComponent = () => {
       <Group position="center">
         {/* <Badge size="lg">{connectionType}サーバ</Badge> */}
         <NativeSelect
-          data={serverSelect}
-          ref={SERVERSELECT}
+          data={serverSelectData}
+          value={SERVERSELECT}
+          onChange={(e) => setSERVERSELECT(e.target.value)}
           // onChange={(e) => setConnectionType(e.currentTarget.value)}
         />
         <Input placeholder="Port" ref={SSHPORT} style={{ maxWidth: "3vw" }} />
@@ -82,20 +82,22 @@ const SSHLoginComponent = () => {
           ref={SSHUSERNAME}
           style={{ maxWidth: "5vw" }}
         />
-        <div>
-          <Checkbox
-            checked={checkboxVal}
-            onChange={() => {
-              setCheckboxVal((prevVal) => {
-                if (prevVal) setPKEY(null);
-                else SSHPASSWORD.current!.value = "";
-                return !prevVal;
-              });
-            }}
-          />
-          <Text size={11}>PK</Text>
-        </div>
-        {checkboxVal ? (
+        {SERVERSELECT === "sftp" ? (
+          <div>
+            <Checkbox
+              checked={checkboxVal}
+              onChange={() => {
+                setCheckboxVal((prevVal) => {
+                  if (prevVal) setPKEY(null);
+                  else SSHPASSWORD.current!.value = "";
+                  return !prevVal;
+                });
+              }}
+            />
+            <Text size={11}>PK</Text>
+          </div>
+        ) : null}
+        {checkboxVal && SERVERSELECT === "sftp" ? (
           <FileInput
             placeholder="Private Key"
             icon={<IconKey size={14} />}

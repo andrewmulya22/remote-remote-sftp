@@ -32,9 +32,9 @@ export const selectedFolderState = atom<string>({
   default: "",
 });
 
-export const selectedComponentState = atom<string>({
+export const selectedComponentState = atom<string[]>({
   key: "selectedComponentState",
-  default: "",
+  default: [],
 });
 
 export const scrollLocState = atom<number>({
@@ -42,7 +42,7 @@ export const scrollLocState = atom<number>({
   default: 0,
 });
 
-export const clipboardState = atom<string>({
+export const clipboardState = atom<string[]>({
   key: "clipboardState",
-  default: "",
+  default: [],
 });

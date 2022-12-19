@@ -87,7 +87,7 @@ const ChangeModModal = () => {
         .post(
           URL + "/modify/api-properties",
           {
-            sourceFile: selectedComponent,
+            sourceFile: selectedComponent.at(-1),
           },
           {
             params: {
@@ -97,11 +97,15 @@ const ChangeModModal = () => {
         )
         .then((resp) => {
           setDefValue(resp.data.mode.slice(-3));
-          onLostFocusInput(resp.data.mode.slice(-3));
+          // initInput(resp.data.mode.slice(-3));
         });
     }
     // eslint-disable-next-line
   }, [modal]);
+
+  useEffect(() => {
+    initInput(defValue);
+  }, [defValue]);
 
   const [state, dispatch] = useReducer(reducer, {
     owner: [false, false, false],
@@ -124,10 +128,11 @@ const ChangeModModal = () => {
     else setError(error);
   };
 
-  const onLostFocusInput = (apiVal = "") => {
-    let unixMode = newPermRef.current!.value.length
-      ? newPermRef.current!.value
-      : apiVal;
+  const initInput = (unixMode: string | undefined) => {
+    // let unixMode = newPermRef.current!.value.length
+    //   ? newPermRef.current!.value
+    //   : apiVal;
+    if (!unixMode) unixMode = "";
     const ownerVal = unixMode.slice(0, 1);
     const groupVal = unixMode.slice(1, 2);
     const otherVal = unixMode.slice(2);
@@ -241,7 +246,7 @@ const ChangeModModal = () => {
               ref={newPermRef}
               defaultValue={defValue}
               maxLength={3}
-              onBlur={() => onLostFocusInput()}
+              onBlur={() => initInput(newPermRef.current?.value)}
             />
           </Input.Wrapper>
         </div>

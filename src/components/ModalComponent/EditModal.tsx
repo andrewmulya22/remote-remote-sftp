@@ -51,7 +51,9 @@ const EditModal = () => {
     if (inputRef.current?.value)
       editFile(
         modalOpened.server,
-        modalOpened.server === "api" ? selectedComponent : selectedSSHComponent,
+        modalOpened.server === "api"
+          ? selectedComponent.at(-1)!
+          : selectedSSHComponent.at(-1)!,
         inputRef.current?.value!
       );
     setModalOpened((prevState) => {
@@ -73,8 +75,8 @@ const EditModal = () => {
           {
             filePath:
               modalOpened.server === "api"
-                ? selectedComponent
-                : selectedSSHComponent,
+                ? selectedComponent.at(-1)
+                : selectedSSHComponent.at(-1),
             server_type: connectionType,
           },
           {

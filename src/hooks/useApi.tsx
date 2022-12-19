@@ -227,7 +227,11 @@ export default function useApi() {
 
   const reloadFiles = (
     server: "ssh" | "api" | "",
-    filesExc: { type: string; name: string[] } = { type: "", name: [] }
+    filesExc: { type: string; name: { src: string; dst: string }[] } = {
+      type: "",
+      name: [],
+    }
+    // filesExc: { type: string; name: string[] } = { type: "", name: [] }
     // updatedFolders: string[] = []
   ) => {
     const containerId = document.getElementById(
@@ -238,22 +242,26 @@ export default function useApi() {
     folders = folders.slice().sort((a, b) => a.length - b.length);
     // if a folder is deleted, remove from opened folders array
     if (filesExc.name.length) {
-      if (
-        filesExc.type === "delete" ||
-        !folders.filter(
-          (folder) =>
-            folder === filesExc.name[1].split("/").slice(0, -1).join("/")
-        ).length
-      ) {
-        folders = folders.filter(
-          (folder) => !folder.includes(filesExc.name[0])
-        );
+      if (filesExc.type === "delete") {
+        folders = folders.filter((folder) => {
+          for (let item of filesExc.name) {
+            if (folder.startsWith(item.src)) return false;
+          }
+          return true;
+        });
       } else if (filesExc.type === "rename") {
-        folders = folders.map((folder) =>
-          folder.includes(filesExc.name[0])
-            ? folder.replace(filesExc.name[0], filesExc.name[1])
-            : folder
-        );
+        // folders = folders.map((folder) =>
+        //   folder.includes(filesExc.name[0])
+        //     ? folder.replace(filesExc.name[0], filesExc.name[1])
+        //     : folder
+        // );
+        folders = folders.map((folder) => {
+          for (let item of filesExc.name) {
+            if (folder.startsWith(item.src))
+              return folder.replace(item.src, item.dst);
+          }
+          return folder;
+        });
         server === "api" ? setFolderLists(folders) : setSSHFolderLists(folders);
       }
     }
@@ -291,7 +299,7 @@ export default function useApi() {
     }
   };
 
-  const deleteFiles = (server: "api" | "ssh" | "") => {
+  const deleteFiles = async (server: "api" | "ssh" | "") => {
     const files = server === "api" ? selectedComponent : selectedSSHComponent;
     const delID = `${socket!.id}-${Math.floor(
       Math.random() * 100000
@@ -301,49 +309,60 @@ export default function useApi() {
       ...prevState,
       {
         id: delID,
-        name: files,
+        name: `Deleting ${files.length} item(s)`,
         controller,
       },
     ]);
-    axios
-      .post(
-        URL + "/modify/" + server + "-delete",
-        {
-          files,
-          server_type: connectionType,
-        },
-        {
-          params: {
-            socketID: socket?.id,
+    for await (const file of files) {
+      await axios
+        .post(
+          URL + "/modify/" + server + "-delete",
+          {
+            files: file,
+            server_type: connectionType,
           },
-        }
-      )
-      .then((response) => {
-        setDelQ((prevState) => prevState.filter((state) => state.id !== delID));
-        if (response.status === 200) {
-          if (server === "api")
-            setFolderLists((prevState) =>
-              prevState.filter((folder) => !folder.includes(files))
-            );
-          else
-            setSSHFolderLists((prevState) =>
-              prevState.filter((folder) => !folder.includes(files))
-            );
-          reloadFiles(server, {
-            type: "delete",
-            name: [files],
+          {
+            params: {
+              socketID: socket?.id,
+            },
+          }
+        )
+        .then((response) => {
+          setDelQ((prevState) =>
+            prevState.filter((state) => state.id !== delID)
+          );
+          if (response.status === 200) {
+            if (server === "api")
+              setFolderLists((prevState) =>
+                prevState.filter((folder) => !folder.includes(file))
+              );
+            else
+              setSSHFolderLists((prevState) =>
+                prevState.filter((folder) => !folder.includes(file))
+              );
+          }
+        })
+        .catch((err) => {
+          setDelQ((prevState) =>
+            prevState.filter((state) => state.id !== delID)
+          );
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
           });
-        }
-      })
-      .catch((err) => {
-        setDelQ((prevState) => prevState.filter((state) => state.id !== delID));
-        showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
-          color: "red",
-          icon: <IconX />,
         });
-      });
+    }
+    reloadFiles(server, {
+      type: "delete",
+      name: files.map((file) => {
+        return {
+          src: file,
+          dst: "",
+        };
+      }),
+    });
   };
 
   const createFileFolder = (
@@ -352,7 +371,10 @@ export default function useApi() {
     server: "api" | "ssh" | "",
     folderName: string
   ) => {
-    let path = server === "api" ? selectedComponent : selectedSSHComponent;
+    let path =
+      server === "api"
+        ? selectedComponent.at(-1)!
+        : selectedSSHComponent.at(-1)!;
     if (type === "file") path = path.split("/").slice(0, -1).join("/");
     const postURL =
       createType === "folder"
@@ -440,11 +462,11 @@ export default function useApi() {
           if (type === "folder")
             reloadFiles(server, {
               type: "rename",
-              name: [sourceFile, dest],
+              name: [{ src: sourceFile, dst: dest }],
             });
           else reloadFiles(server);
-          if (server === "api") setSelectedComponent(dest);
-          if (server === "ssh") setSelectedSSHComponent(dest);
+          if (server === "api") setSelectedComponent([dest]);
+          if (server === "ssh") setSelectedSSHComponent([dest]);
         }
       })
       .catch((err) =>
@@ -457,58 +479,64 @@ export default function useApi() {
       );
   };
 
-  const moveFile = (
+  const moveFile = async (
     server: "api" | "ssh" | "",
-    sourceFile: string,
+    // sourceFile: string,
     destPath: string
   ) => {
-    axios
-      .post(
-        URL + "/modify/" + server + "-move",
-        {
-          sourceFile,
-          destPath,
-          server_type: connectionType,
-        },
-        {
-          params: {
-            socketID: socket?.id,
+    const sourceFile =
+      server === "api" ? selectedComponent : selectedSSHComponent;
+    for await (const file of sourceFile) {
+      await axios
+        .post(
+          URL + "/modify/" + server + "-move",
+          {
+            sourceFile: file,
+            destPath,
+            server_type: connectionType,
           },
-        }
-      )
-      .then((response) => {
-        if (response.status === 200) {
-          if (server === "api")
-            setFolderLists((prevState) =>
-              prevState.filter((folder) => !folder.includes(sourceFile))
-            );
-          else
-            setSSHFolderLists((prevState) =>
-              prevState.filter((folder) => !folder.includes(sourceFile))
-            );
-          reloadFiles(server, {
-            type: "rename",
-            name: [
-              sourceFile,
-              destPath + "/" + sourceFile.split("/").slice(-1)[0],
-            ],
-          });
-        }
-      })
-      .catch((err) =>
-        showNotification({
-          title: `Error ${err.response.status}`,
-          message: err.response.data,
-          color: "red",
-          icon: <IconX />,
+          {
+            params: {
+              socketID: socket?.id,
+            },
+          }
+        )
+        .then((response) => {
+          if (response.status === 200) {
+            if (server === "api")
+              setFolderLists((prevState) =>
+                prevState.filter((folder) => !folder.includes(file))
+              );
+            else
+              setSSHFolderLists((prevState) =>
+                prevState.filter((folder) => !folder.includes(file))
+              );
+          }
         })
-      );
+        .catch((err) =>
+          showNotification({
+            title: `Error ${err.response.status}`,
+            message: err.response.data,
+            color: "red",
+            icon: <IconX />,
+          })
+        );
+    }
+    reloadFiles(server, {
+      type: "rename",
+      name: sourceFile.map((file) => {
+        return {
+          src: file,
+          dst: destPath + "/" + file.split("/").slice(-1)[0],
+        };
+      }),
+    });
   };
 
   const getProperties = (server: "api" | "ssh" | "") => {
     setPropertiesModal(true);
     const sourceFile =
-      server === "api" ? selectedComponent : selectedSSHComponent;
+      server === "api" ? selectedComponent.at(-1) : selectedSSHComponent.at(-1);
     axios
       .post(
         URL + "/modify/" + server + "-properties",
@@ -536,30 +564,23 @@ export default function useApi() {
   };
 
   const changePerm = async (newMod: string) => {
-    const path = selectedComponent;
+    const path = selectedComponent.at(-1);
     let error = "";
     await axios
-      .post(
-        URL + "'modify/api-hangeMod",
-        {
-          path,
-          newMod,
-        },
-        {
-          params: {
-            socketID: socket?.id,
-          },
-        }
-      )
+      .post(URL + "/modify/api-changeMod", {
+        path,
+        newMod,
+      })
       .catch((err) => {
         error = err.response.data;
       });
     return error;
   };
 
-  const pasteFile = (server: "api" | "ssh" | "") => {
+  const pasteFile = async (server: "api" | "ssh" | "") => {
     const sourceFile = server === "api" ? clipboard : SSHClipboard;
-    const dest = server === "api" ? selectedComponent : selectedSSHComponent;
+    const dest =
+      server === "api" ? selectedComponent.at(-1) : selectedSSHComponent.at(-1);
     const copyID = `${socket!.id}-${Math.floor(
       Math.random() * 100000
     ).toString()}`;
@@ -569,56 +590,56 @@ export default function useApi() {
       ...prevState,
       {
         id: copyID,
-        name: sourceFile,
+        name: `Copying ${sourceFile.length} file(s)`,
         controller: controller,
       },
     ]);
     const removeFromQ = (id: string) => {
       setCopyQ((prevState) => prevState.filter((state) => state.id !== id));
     };
-    axios
-      .post(
-        URL + "/copy_file/" + server + "-copy",
-        {
-          sourceFile,
-          destPath: dest,
-          server_type: connectionType,
-          copyID,
-        },
-        {
-          params: {
-            socketID: socket?.id,
+    for await (const file of sourceFile) {
+      await axios
+        .post(
+          URL + "/copy_file/" + server + "-copy",
+          {
+            sourceFile: file,
+            destPath: dest,
+            server_type: connectionType,
+            copyID,
           },
-          signal: controller.signal,
-        }
-      )
-      .then(() => {
-        reloadFiles(server);
-        removeFromQ(copyID);
-      })
-      .catch((err) => {
-        removeFromQ(copyID);
-        showNotification({
-          title: `Error ${err.response ? err.response.status : ": CANCELED"}`,
-          message: err.response ? err.response.data : "Copy canceled",
-          color: "red",
-          icon: <IconX />,
-        });
-        if (!err.response) {
-          axios.post(
-            URL + "/copy_file/abort",
-            {
-              server,
-              copyID,
+          {
+            params: {
+              socketID: socket?.id,
             },
-            {
-              params: {
-                socketID: socket?.id,
+            signal: controller.signal,
+          }
+        )
+        .then()
+        .catch((err) => {
+          showNotification({
+            title: `Error ${err.response ? err.response.status : ": CANCELED"}`,
+            message: err.response ? err.response.data : "Copy canceled",
+            color: "red",
+            icon: <IconX />,
+          });
+          if (!err.response) {
+            axios.post(
+              URL + "/copy_file/abort",
+              {
+                server,
+                copyID,
               },
-            }
-          );
-        }
-      });
+              {
+                params: {
+                  socketID: socket?.id,
+                },
+              }
+            );
+          }
+        });
+    }
+    removeFromQ(copyID);
+    reloadFiles(server);
   };
 
   return {
