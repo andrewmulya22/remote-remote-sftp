@@ -112,8 +112,8 @@ const FoldersFilesComponent = ({
     )
       // moveFile("api", sourcefile, files.path);
       moveFile("api", files.path);
-    if (source === "ssh" && files.type === "folder")
-      downloadFile(sourcefile, files.path);
+    if (source === "ssh" && files.type === "folder") downloadFile(files.path);
+    // downloadFile(sourcefile, files.path);
   };
 
   //add scroll back when context menu is off

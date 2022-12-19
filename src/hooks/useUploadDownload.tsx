@@ -77,10 +77,20 @@ export default function useUploadDownload() {
 
   // DOWNLOAD FILE
   const downloadFile = (
-    sourceFile: string | null = null,
+    // sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (!sourceFile && !selectedAPIFile) return;
+    if (selectedAPIFile.length) {
+      const dst = destFile === null ? selectedAPIFile.at(-1)! : destFile;
+      // if (!sourceFile && !selectedAPIFile) return;
+      for (const file of selectedSSHFile) {
+        console.log(file, dst);
+        downloadHandler(file, dst);
+      }
+    }
+  };
+
+  const downloadHandler = (src: string, dst: string) => {
     let downloadDone = false;
     let downloadSuccess = true;
     const downloadID = `${socket!.id}-${Math.floor(
@@ -104,8 +114,10 @@ export default function useUploadDownload() {
         URL + "/transfer/download",
         {
           downloadID,
-          sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
-          destFile: destFile === null ? selectedAPIFile : destFile,
+          // sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
+          sourceFile: src,
+          destFile: dst,
+          // destFile: destFile === null ? selectedAPIFile : destFile,
           server_type: connectionType,
         },
         {
@@ -167,10 +179,21 @@ export default function useUploadDownload() {
 
   // UPLOAD FILE
   const uploadFile = (
-    sourceFile: string | null = null,
+    // sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (!sourceFile && !selectedSSHFile) return;
+    if (selectedSSHFile.length) {
+      const dst = destFile === null ? selectedSSHFile.at(-1)! : destFile;
+      // if (!sourceFile && !selectedAPIFile) return;
+      for (const file of selectedAPIFile) {
+        console.log(file, dst);
+        uploadHandler(file, dst);
+      }
+    }
+    // if (!sourceFile && !selectedSSHFile) return;
+  };
+
+  const uploadHandler = (src: string, dst: string) => {
     let uploadDone = false;
     let uploadSuccess = true;
     const uploadID = `${socket!.id}-${Math.floor(
@@ -193,8 +216,8 @@ export default function useUploadDownload() {
         URL + "/transfer/upload",
         {
           uploadID,
-          sourceFile: sourceFile === null ? selectedAPIFile : sourceFile,
-          destFile: destFile === null ? selectedSSHFile : destFile,
+          sourceFile: src,
+          destFile: dst,
           server_type: connectionType,
         },
         {

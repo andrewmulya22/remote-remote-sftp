@@ -108,7 +108,8 @@ const FoldersFilesRightComponent = ({
     const source = event.dataTransfer.getData("server");
     if (source === "api" && files.type === "folder")
       // upload file
-      uploadFile(sourcefile, files.path);
+      uploadFile(files.path);
+    // uploadFile(sourcefile, files.path);
     if (
       source === "ssh" &&
       files.type === "folder" &&
