@@ -2,10 +2,14 @@ import { showNotification } from "@mantine/notifications";
 import { IconX } from "@tabler/icons";
 import axios from "axios";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { selectedComponentState } from "../atoms/apiServerState";
+import {
+  selectedComponentState,
+  selectedFolderState,
+} from "../atoms/apiServerState";
 import {
   connectionTypeState,
   selectedSSHComponentState,
+  selectedSSHFolderState,
 } from "../atoms/sshServerState";
 import {
   copyQState,
@@ -22,6 +26,9 @@ export default function useUploadDownload() {
   //State management
   const selectedAPIFile = useRecoilValue(selectedComponentState);
   const selectedSSHFile = useRecoilValue(selectedSSHComponentState);
+  //folder state
+  const selectedFolder = useRecoilValue(selectedFolderState);
+  const selectedSSHFolder = useRecoilValue(selectedSSHFolderState);
   const [uploadQ, setUploadQ] = useRecoilState(uploadQState);
   const [downloadQ, setDownloadQ] = useRecoilState(downloadQState);
   const copyQ = useRecoilValue(copyQState);
@@ -80,11 +87,10 @@ export default function useUploadDownload() {
     // sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (selectedAPIFile.length) {
-      const dst = destFile === null ? selectedAPIFile.at(-1)! : destFile;
+    if (selectedSSHFile.length) {
+      const dst = destFile === null ? selectedFolder : destFile;
       // if (!sourceFile && !selectedAPIFile) return;
       for (const file of selectedSSHFile) {
-        console.log(file, dst);
         downloadHandler(file, dst);
       }
     }
@@ -182,11 +188,10 @@ export default function useUploadDownload() {
     // sourceFile: string | null = null,
     destFile: string | null = null
   ) => {
-    if (selectedSSHFile.length) {
-      const dst = destFile === null ? selectedSSHFile.at(-1)! : destFile;
+    if (selectedAPIFile.length) {
+      const dst = destFile === null ? selectedSSHFolder : destFile;
       // if (!sourceFile && !selectedAPIFile) return;
       for (const file of selectedAPIFile) {
-        console.log(file, dst);
         uploadHandler(file, dst);
       }
     }
