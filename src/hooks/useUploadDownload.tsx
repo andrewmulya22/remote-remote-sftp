@@ -83,22 +83,26 @@ export default function useUploadDownload() {
   }, [socket, setDownloadQ, setUploadQ]);
 
   // DOWNLOAD FILE
-  const downloadFile = (
-    // sourceFile: string | null = null,
-    destFile: string | null = null
-  ) => {
+  const downloadFile = async (destFile: string | null = null) => {
     if (selectedSSHFile.length) {
       const dst = destFile === null ? selectedFolder : destFile;
-      // if (!sourceFile && !selectedAPIFile) return;
+      let promises: Promise<string>[] = [];
       for (const file of selectedSSHFile) {
-        downloadHandler(file, dst);
+        const promise: Promise<string> = new Promise((resolve) => {
+          downloadHandler(file, dst).then(() => {
+            resolve("OK");
+          });
+        });
+        promises = [...promises, promise];
       }
+      Promise.all(promises).then(() => {
+        reloadFiles("api");
+      });
     }
   };
 
-  const downloadHandler = (src: string, dst: string) => {
+  const downloadHandler = async (src: string, dst: string) => {
     let downloadDone = false;
-    let downloadSuccess = true;
     const downloadID = `${socket!.id}-${Math.floor(
       Math.random() * 100000
     ).toString()}`;
@@ -115,15 +119,32 @@ export default function useUploadDownload() {
         controller: controller,
       },
     ]);
-    axios
+    socket?.emit("transferProgress", {
+      type: "download",
+      transferID: downloadID,
+    });
+    const progressInterval = setInterval(() => {
+      // if download has reached 100%
+      if (downloadDone) {
+        clearInterval(progressInterval);
+        socket?.emit("deleteProgress", {
+          type: "download",
+          transferID: downloadID,
+          server_type: connectionType,
+        });
+        //remove from download queue
+        setDownloadQ((prevState) =>
+          prevState.filter((state) => state.id !== downloadID)
+        );
+      }
+    }, 1000);
+    await axios
       .post(
         URL + "/transfer/download",
         {
           downloadID,
-          // sourceFile: sourceFile === null ? selectedSSHFile : sourceFile,
           sourceFile: src,
           destFile: dst,
-          // destFile: destFile === null ? selectedAPIFile : destFile,
           server_type: connectionType,
         },
         {
@@ -138,7 +159,6 @@ export default function useUploadDownload() {
       })
       .catch((err) => {
         downloadDone = true;
-        downloadSuccess = false;
         if (err.response)
           showNotification({
             title: `Error ${err.response.status}`,
@@ -158,49 +178,32 @@ export default function useUploadDownload() {
             color: "red",
             icon: <IconX />,
           });
-          reloadFiles("api");
         }
       });
-    socket?.emit("transferProgress", {
-      type: "download",
-      transferID: downloadID,
-    });
-    const progressInterval = setInterval(() => {
-      // if download has reached 100%
-      if (downloadDone) {
-        clearInterval(progressInterval);
-        socket?.emit("deleteProgress", {
-          type: "download",
-          transferID: downloadID,
-          server_type: connectionType,
-        });
-        //remove from download queue
-        setDownloadQ((prevState) =>
-          prevState.filter((state) => state.id !== downloadID)
-        );
-        if (downloadSuccess) reloadFiles("api");
-      }
-    }, 1000);
+    return;
   };
 
   // UPLOAD FILE
-  const uploadFile = (
-    // sourceFile: string | null = null,
-    destFile: string | null = null
-  ) => {
+  const uploadFile = async (destFile: string | null = null) => {
     if (selectedAPIFile.length) {
       const dst = destFile === null ? selectedSSHFolder : destFile;
-      // if (!sourceFile && !selectedAPIFile) return;
+      let promises: Promise<string>[] = [];
       for (const file of selectedAPIFile) {
-        uploadHandler(file, dst);
+        const promise: Promise<string> = new Promise((resolve) => {
+          uploadHandler(file, dst).then(() => {
+            resolve("OK");
+          });
+        });
+        promises = [...promises, promise];
       }
+      Promise.all(promises).then(() => {
+        reloadFiles("ssh");
+      });
     }
-    // if (!sourceFile && !selectedSSHFile) return;
   };
 
-  const uploadHandler = (src: string, dst: string) => {
+  const uploadHandler = async (src: string, dst: string) => {
     let uploadDone = false;
-    let uploadSuccess = true;
     const uploadID = `${socket!.id}-${Math.floor(
       Math.random() * 100000
     ).toString()}`;
@@ -216,7 +219,26 @@ export default function useUploadDownload() {
         controller: controller,
       },
     ]);
-    axios
+    socket?.emit("transferProgress", {
+      type: "upload",
+      transferID: uploadID,
+    });
+    const progressInterval = setInterval(() => {
+      // if download has reached 100%
+      if (uploadDone) {
+        clearInterval(progressInterval);
+        socket?.emit("deleteProgress", {
+          type: "upload",
+          transferID: uploadID,
+          server_type: connectionType,
+        });
+        //remove from download queue
+        setUploadQ((prevState) =>
+          prevState.filter((state) => state.id !== uploadID)
+        );
+      }
+    }, 1000);
+    await axios
       .post(
         URL + "/transfer/upload",
         {
@@ -237,7 +259,6 @@ export default function useUploadDownload() {
       })
       .catch((err) => {
         uploadDone = true;
-        uploadSuccess = false;
         if (err.response)
           showNotification({
             title: `Error ${err.response.status}`,
@@ -257,31 +278,9 @@ export default function useUploadDownload() {
             color: "red",
             icon: <IconX />,
           });
-          reloadFiles("ssh");
         }
       });
-    socket?.emit("transferProgress", {
-      type: "upload",
-      transferID: uploadID,
-    });
-    const progressInterval = setInterval(() => {
-      // if download has reached 100%
-      if (uploadDone) {
-        clearInterval(progressInterval);
-        socket?.emit("deleteProgress", {
-          type: "upload",
-          transferID: uploadID,
-          server_type: connectionType,
-        });
-        //remove from download queue
-        setUploadQ((prevState) =>
-          prevState.filter((state) => state.id !== uploadID)
-        );
-        if (uploadSuccess) {
-          reloadFiles("ssh");
-        }
-      }
-    }, 1000);
+    return;
   };
 
   const abortTransfer = (type: "download" | "upload" | "copy", id: string) => {

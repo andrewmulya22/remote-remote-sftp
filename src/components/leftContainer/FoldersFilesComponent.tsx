@@ -161,11 +161,15 @@ const FoldersFilesComponent = ({
         onClick={(e: React.MouseEvent) => {
           setRename(false);
           fillSelectedFolder();
-          if (e.shiftKey) {
-            setSelectedComponent((prevState) => [
-              ...prevState.filter((state) => state !== files.path),
-              files.path,
-            ]);
+          if (e.ctrlKey || e.metaKey) {
+            setSelectedComponent((prevState) => {
+              const selected = prevState.find((state) => state === files.path);
+              const filteredArr = prevState.filter(
+                (state) => state !== files.path
+              );
+              if (selected) return filteredArr;
+              else return [...filteredArr, files.path];
+            });
           } else setSelectedComponent([files.path]);
         }}
         onContextMenu={(event: React.MouseEvent) => {

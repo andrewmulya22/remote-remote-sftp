@@ -36,8 +36,8 @@ interface IChildren {
 export default function useApi() {
   const URL = useRecoilValue(URLState);
   //fetching state
-  const setFetching = useSetRecoilState(fetchingState);
-  const setFetchingSSH = useSetRecoilState(fetchingSSHState);
+  const [fetching, setFetching] = useRecoilState(fetchingState);
+  const [fetchingSSH, setFetchingSSH] = useRecoilState(fetchingSSHState);
   //file states
   const setFile = useSetRecoilState(filesState);
   const setSSHFile = useSetRecoilState(SSHFilesState);
@@ -78,6 +78,7 @@ export default function useApi() {
   ) => {
     if (server === "api") setFetching(true);
     if (server === "ssh") setFetchingSSH(true);
+    console.log(fetching);
     axios
       .get(URL + "/files/" + server, {
         params: {
