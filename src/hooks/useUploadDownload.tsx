@@ -82,26 +82,16 @@ export default function useUploadDownload() {
     }
   }, [socket, setDownloadQ, setUploadQ]);
 
-  // DOWNLOAD FILE
   const downloadFile = async (destFile: string | null = null) => {
     if (selectedSSHFile.length) {
       const dst = destFile === null ? selectedFolder : destFile;
-      let promises: Promise<string>[] = [];
-      for (const file of selectedSSHFile) {
-        const promise: Promise<string> = new Promise((resolve) => {
-          downloadHandler(file, dst).then(() => {
-            resolve("OK");
-          });
-        });
-        promises = [...promises, promise];
-      }
-      Promise.all(promises).then(() => {
+      await downloadHandler(selectedSSHFile, dst).then(() => {
         reloadFiles("api");
       });
     }
   };
 
-  const downloadHandler = async (src: string, dst: string) => {
+  const downloadHandler = async (src: string[], dst: string) => {
     let downloadDone = false;
     const downloadID = `${socket!.id}-${Math.floor(
       Math.random() * 100000
@@ -187,22 +177,13 @@ export default function useUploadDownload() {
   const uploadFile = async (destFile: string | null = null) => {
     if (selectedAPIFile.length) {
       const dst = destFile === null ? selectedSSHFolder : destFile;
-      let promises: Promise<string>[] = [];
-      for (const file of selectedAPIFile) {
-        const promise: Promise<string> = new Promise((resolve) => {
-          uploadHandler(file, dst).then(() => {
-            resolve("OK");
-          });
-        });
-        promises = [...promises, promise];
-      }
-      Promise.all(promises).then(() => {
+      uploadHandler(selectedAPIFile, dst).then(() => {
         reloadFiles("ssh");
       });
     }
   };
 
-  const uploadHandler = async (src: string, dst: string) => {
+  const uploadHandler = async (src: string[], dst: string) => {
     let uploadDone = false;
     const uploadID = `${socket!.id}-${Math.floor(
       Math.random() * 100000

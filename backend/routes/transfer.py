@@ -107,21 +107,24 @@ def sftpget():
     # destination folder
     destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
         content['destFile']) else content['destFile']
-    # try:
-    sftp: paramiko.SFTPClient = None
-    if content['server_type'] == "sftp":
-        sftp = paramiko.SFTPClient.from_transport(
-            config.sftp_host[f"{socketID}"])
-        config.download_sftps[f"{content['downloadID']}"] = sftp
-    if content['server_type'] == "ftp":
-        config.getting_files_byte[f"{content['downloadID']}"] = {}
-    downloadHandler(content['sourceFile'],
-                    destination_folder, content['downloadID'], content['server_type'], sftp, socketID)
-    if sftp is not None:
-        sftp.close()
-    return "OK", 200
-    # except Exception as e:
-    #     return f"{e}", 500
+    print(content['sourceFile'])
+    # return "OK"
+    try:
+        sftp: paramiko.SFTPClient = None
+        if content['server_type'] == "sftp":
+            sftp = paramiko.SFTPClient.from_transport(
+                config.sftp_host[f"{socketID}"])
+            config.download_sftps[f"{content['downloadID']}"] = sftp
+        if content['server_type'] == "ftp":
+            config.getting_files_byte[f"{content['downloadID']}"] = {}
+        for src in content['sourceFile']:
+            downloadHandler(src,
+                            destination_folder, content['downloadID'], content['server_type'], sftp, socketID)
+        if sftp is not None:
+            sftp.close()
+        return "OK", 200
+    except Exception as e:
+        return f"{e}", 500
 
 
 @transfer.route('/upload', methods=['POST'])
@@ -149,8 +152,9 @@ def sftpput():
             content['destFile']) else content['destFile']
     try:
         config.putting_files_byte[f"{content['uploadID']}"] = {}
-        uploadHandler(content['sourceFile'],
-                      destination_folder, content['uploadID'], server_type, sftp, socketID)
+        for src in content['sourceFile']:
+            uploadHandler(src,
+                        destination_folder, content['uploadID'], server_type, sftp, socketID)
         if server_type == "sftp":
             sftp.close()
         return "OK", 200
