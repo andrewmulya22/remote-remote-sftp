@@ -91,9 +91,11 @@ const FoldersFilesRightComponent = ({
     files.name ? files.name : files.path.split("/").slice(-1)[0]
   );
 
-  const renameHandler = () => {
+  const renameHandler = async () => {
     setRename(false);
-    renameFile("ssh", inputValue, files.path, files.type);
+    if (inputValue === files.name) return;
+    const res = await renameFile("ssh", inputValue, files.path, files.type);
+    if (!res) setInputValue(files.name);
     scrollIntoView({ alignment: "center" });
   };
 

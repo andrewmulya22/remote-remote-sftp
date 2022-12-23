@@ -436,14 +436,15 @@ export default function useApi() {
       );
   };
 
-  const renameFile = (
+  const renameFile = async (
     server: "api" | "ssh" | "",
     fileName: string,
     sourceFile: string,
     type: string
   ) => {
     const dest = sourceFile.split("/").slice(0, -1).join("/") + "/" + fileName;
-    axios
+    let success = true;
+    await axios
       .post(
         URL + "/modify/" + server + "-rename",
         {
@@ -467,16 +468,18 @@ export default function useApi() {
           else reloadFiles(server);
           if (server === "api") setSelectedComponent([dest]);
           if (server === "ssh") setSelectedSSHComponent([dest]);
-        }
+        } else success = false;
       })
-      .catch((err) =>
+      .catch((err) => {
+        success = false;
         showNotification({
           title: `Error ${err.response.status}`,
           message: err.response.data,
           color: "red",
           icon: <IconX />,
-        })
-      );
+        });
+      });
+    return success;
   };
 
   const moveFile = async (

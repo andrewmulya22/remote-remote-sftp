@@ -89,10 +89,12 @@ const FoldersFilesComponent = ({
     files.name ? files.name : files.path.split("/").slice(-1)[0]
   );
 
-  const renameHandler = () => {
+  const renameHandler = async () => {
     setRename(false);
-    renameFile("api", inputValue, files.path, files.type);
-    scrollIntoView({ alignment: "center" });
+    if (inputValue === files.name) return;
+    const res = await renameFile("api", inputValue, files.path, files.type);
+    if (!res) setInputValue(files.name);
+    else scrollIntoView({ alignment: "center" });
   };
 
   const fillSelectedFolder = () => {
