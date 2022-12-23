@@ -1,5 +1,5 @@
-import { Card, createStyles, Grid, Group, Modal, Text } from "@mantine/core";
-import { IconFolder } from "@tabler/icons";
+import { Card, createStyles, Group, Modal, Text } from "@mantine/core";
+import { IconFile, IconFolder } from "@tabler/icons";
 import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
@@ -19,6 +19,7 @@ const PropertiesModal = () => {
   const [modalOpened, setModalOpened] = useRecoilState(propertiesModalState);
   const propertiesData = useRecoilValue(propertiesDataState);
   const { classes } = useStyles();
+  const fileType = fileTypeConverter(propertiesData.mode);
   return (
     <Modal
       opened={modalOpened}
@@ -34,7 +35,7 @@ const PropertiesModal = () => {
       <Card withBorder shadow="sm" radius="md">
         <Card.Section withBorder inheritPadding py="xs">
           <Group position="center">
-            <IconFolder />
+            {fileType === "Directory" ? <IconFolder /> : <IconFile />}
             <Text>
               {propertiesData.name === "" ? "root" : propertiesData.name}
             </Text>
@@ -42,9 +43,7 @@ const PropertiesModal = () => {
         </Card.Section>
         <Group position="center" grow>
           <Text style={{ textAlign: "right" }}>Filetype</Text>
-          <Text style={{ textAlign: "left" }}>
-            {fileTypeConverter(propertiesData.mode)}
-          </Text>
+          <Text style={{ textAlign: "left" }}>{fileType}</Text>
         </Group>
         <Group position="center" grow>
           <Text style={{ textAlign: "right" }}>Size</Text>

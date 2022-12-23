@@ -146,5 +146,4 @@ def ssh_children():
                     continue
         return json.dumps(children)
     except Exception as e:
-        print(e)
         return f"{e}", 500

@@ -107,7 +107,6 @@ def sftpget():
     # destination folder
     destination_folder = os.path.dirname(content['destFile']) if not os.path.isdir(
         content['destFile']) else content['destFile']
-    print(content['sourceFile'])
     # return "OK"
     try:
         sftp: paramiko.SFTPClient = None
@@ -154,7 +153,7 @@ def sftpput():
         config.putting_files_byte[f"{content['uploadID']}"] = {}
         for src in content['sourceFile']:
             uploadHandler(src,
-                        destination_folder, content['uploadID'], server_type, sftp, socketID)
+                          destination_folder, content['uploadID'], server_type, sftp, socketID)
         if server_type == "sftp":
             sftp.close()
         return "OK", 200

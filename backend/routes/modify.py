@@ -38,6 +38,8 @@ def rename():
     content = request.get_json()
     sourceFile = content["sourceFile"]
     fileName = os.path.join(os.path.dirname(sourceFile), content["fileName"])
+    if os.path.exists(fileName):
+        return "File already exists", 500
     if sourceFile != fileName:
         try:
             os.rename(sourceFile, fileName)
@@ -119,7 +121,10 @@ def changePerm():
 def newFile():
     content = request.get_json()
     try:
-        Path(os.path.join(content['path'], content['folderName'])).touch()
+        fileName = os.path.join(content['path'], content['folderName'])
+        if os.path.exists(fileName):
+            return "File already exists", 500
+        Path(fileName).touch()
         return "OK"
     except Exception as e:
         return f"{e}", 500
@@ -193,10 +198,18 @@ def ssh_rename():
             if server_type == "sftp":
                 sftp = paramiko.SFTPClient.from_transport(
                     config.sftp_host[f"{socketID}"])
-                sftp.rename(sourceFile, fileName)
-                sftp.close()
+                try:
+                    sftp.stat(fileName)
+                    return "File already exists", 500
+                except:
+                    sftp.rename(sourceFile, fileName)
+                    sftp.close()
             elif server_type == "ftp":
-                config.ftp_host[f"{socketID}"].rename(sourceFile, fileName)
+                try:
+                    config.ftp_host[f"{socketID}"].stat(fileName)
+                    return "File already exists", 500
+                except:
+                    config.ftp_host[f"{socketID}"].rename(sourceFile, fileName)
             return "OK"
         except Exception as e:
             return f"{e}", 500
@@ -230,18 +243,27 @@ def ssh_newFile():
     socketID = request.args.get('socketID')
     content = request.get_json()
     server_type = content['server_type']
+    fileName = os.path.join(content['path'], content['folderName'])
     try:
         if server_type == "sftp":
             sftp = paramiko.SFTPClient.from_transport(
                 config.sftp_host[f"{socketID}"])
-            f = sftp.open(os.path.join(
-                content['path'], content['folderName']), 'a')
-            f.flush()
-            sftp.close()
+            try:
+                sftp.stat(fileName)
+                return "File already exists", 500
+            except:
+                f = sftp.open(os.path.join(
+                    content['path'], content['folderName']), 'a')
+                f.flush()
+                sftp.close()
         elif server_type == "ftp":
-            f = config.ftp_host[f"{socketID}"].open(os.path.join(
-                content['path'], content['folderName']), 'w')
-            f.close()
+            try:
+                config.ftp_host[f"{socketID}"].stat(fileName)
+                return "File already exists", 500
+            except:
+                f = config.ftp_host[f"{socketID}"].open(os.path.join(
+                    content['path'], content['folderName']), 'w')
+                f.close()
         return "OK", 200
     except Exception as e:
         return f"{e}", 500

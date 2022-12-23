@@ -54,7 +54,6 @@ def ssh_copy():
     if server_type != "ftp":
         return "Operation not supported", 500
     try:
-        print(content['sourceFile'], content['destPath'])
         SSHCopyHandler(socketID, copyID,
                        content['sourceFile'], content['destPath'])
         if copyID in config.copy_lists:
